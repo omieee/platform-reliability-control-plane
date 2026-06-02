@@ -1,62 +1,105 @@
-VALID_ENVIRONMENTS = {"dev", "preprod", "prod"}
-
-STATUS_PASS = "pass"
-STATUS_FAIL = "fail"
-STATUS_UNKNOWN = "unknown"
-
-FAILURE_NONE = "none"
-FAILURE_TIMEOUT = "timeout"
-FAILURE_CONNECTION_ERROR = "connection_error"
-FAILURE_HTTP_STATUS_MISMATCH = "http_status_mismatch"
-FAILURE_UNKNOWN_ERROR = "unknown_error"
+from dataclasses import dataclass
+from enum import IntEnum, StrEnum
 
 
-def create_service(name, environment, base_url):
+class Status(StrEnum):
+    FAIL = "FAIL"
+    PASS = "PASS"
+    UNKNOWN = "UNKNOWN"
+
+
+class StatusCode(IntEnum):
+    FAIL = 0
+    PASS = 200
+    UNKNOWN = -1
+
+
+class FailureReason(StrEnum):
+    TIMEOUT = "TIMEOUT"
+    DNS_ERROR = "DNS_ERROR"
+    CONNECTION_ERROR = "CONNECTION_ERROR"
+    HTTP_ERROR = "HTTP_ERROR"
+    INVALID_RESPONSE = "INVALID_RESPONSE"
+    UNKNOWN = "UNKNOWN"
+
+
+@dataclass
+class Service:
+    name: str
+    base_url: str | None
+
+
+@dataclass
+class Environment:
+    name: str
+    region: str | None
+    cluster: str | None
+
+
+@dataclass
+class Probe:
+    environment: Environment
+    service: Service
+    url: str
+    expected_status_code: int = 200
+    timeout_seconds: float = 2.0
+
+
+@dataclass
+class ProbeResult:
+    probe: Probe
+    status: Status
+    actual_status_code: StatusCode
+    failure_reason: FailureReason | None
+    latency_ms: float | None
+
+
+def create_environment(
+    name: str, region: str | None, cluster: str | None
+) -> Environment | ValueError:
+    if not name:
+        raise ValueError("environment name is required")
+    env: Environment = Environment(name=name, region=region, cluster=cluster)
+    return env
+
+
+def create_service(name: str, base_url: str | None) -> Service | ValueError:
     if not name:
         raise ValueError("service name is required")
-
-    if environment not in VALID_ENVIRONMENTS:
-        raise ValueError("invalid environment")
-
-    if not base_url.startswith(("http://", "https://")):
-        raise ValueError("base_url must start with http:// or https://")
-
-    return {
-        "name": name,
-        "environment": environment,
-        "base_url": base_url,
-    }
+    serv: Service = Service(name=name, base_url=base_url)
+    return serv
 
 
-def create_http_probe(service_name, url, expected_status_code=200, timeout_seconds=2.0):
-    if not service_name:
-        raise ValueError("service_name is required")
-
+def create_http_proble(
+    environment: Environment,
+    service: Service,
+    url: str,
+    expected_status_code: int = 200,
+    timeout_seconds: float = 2.0,
+) -> Probe | TypeError:
+    if not environment:
+        raise ValueError("you need to have an environment up and ready")
+    if not service:
+        raise ValueError("you need to have a service up and ready")
     if not url.startswith(("http://", "https://")):
         raise ValueError("url must start with http:// or https://")
-
     if timeout_seconds <= 0:
-        raise ValueError("timeout_seconds must be greater than zero")
+        raise ValueError("timeout seconds must be greater than zero")
 
-    return {
-        "service_name": service_name,
-        "url": url,
-        "expected_status_code": expected_status_code,
-        "timeout_seconds": timeout_seconds,
-    }
+    return Probe(
+        environment=environment,
+        service=service,
+        url=url,
+        expected_status_code=expected_status_code,
+        timeout_seconds=timeout_seconds,
+    )
 
 
-def create_probe_result(
-    service_name,
-    status,
-    actual_status_code,
-    failure_reason,
-    latency_ms,
-):
-    return {
-        "service_name": service_name,
-        "status": status,
-        "actual_status_code": actual_status_code,
-        "failure_reason": failure_reason,
-        "latency_ms": latency_ms,
-    }
+def create_probe_result(probe: Probe) -> ProbeResult:
+    return ProbeResult(
+        probe=probe,
+        status=Status.PASS,
+        actual_status_code=StatusCode.PASS,
+        failure_reason=None,
+        latency_ms=3.0,
+    )
