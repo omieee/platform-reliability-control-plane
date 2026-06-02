@@ -3,7 +3,7 @@ from enum import StrEnum
 from http import HTTPStatus
 
 
-class Status(StrEnum):
+class ProbeStatus(StrEnum):
     FAIL = "FAIL"
     PASS = "PASS"
     UNKNOWN = "UNKNOWN"
@@ -20,15 +20,15 @@ class FailureReason(StrEnum):
 
 @dataclass
 class Service:
-    name: str
-    base_url: str | None
+    service_name: str
+    service_url: str
 
 
 @dataclass
 class Environment:
-    name: str
-    region: str | None
-    cluster: str | None
+    environment_name: str
+    region: str | None = None
+    cluster: str | None = None
 
 
 @dataclass
@@ -43,29 +43,33 @@ class Probe:
 @dataclass
 class ProbeResult:
     probe: Probe
-    status: Status
+    status: ProbeStatus
     actual_status_code: HTTPStatus | None
     failure_reason: FailureReason | None
-    timeout_seconds: float | None
+    latency_ms: float | None
 
 
 def create_environment(
-    name: str, region: str | None, cluster: str | None
+    environment_name: str, region: str | None, cluster: str | None
 ) -> Environment:
-    if not name:
+    if not environment_name:
         raise ValueError("environment name is required")
-    env: Environment = Environment(name=name, region=region, cluster=cluster)
+    env: Environment = Environment(
+        environment_name=environment_name, region=region, cluster=cluster
+    )
     return env
 
 
-def create_service(name: str, base_url: str | None) -> Service:
-    if not name:
+def create_service(service_name: str, service_url: str) -> Service:
+    if not service_name:
         raise ValueError("service name is required")
-    serv: Service = Service(name=name, base_url=base_url)
+    if not service_url.startswith(("http://", "https://")):
+        raise ValueError("service url must start with http:// or https://")
+    serv: Service = Service(service_name=service_name, service_url=service_url)
     return serv
 
 
-def create_http_proble(
+def create_http_probe(
     environment: Environment,
     service: Service,
     url: str,
@@ -85,16 +89,22 @@ def create_http_proble(
         environment=environment,
         service=service,
         url=url,
-        expected_status_code=HTTPStatus.OK,
+        expected_status_code=expected_status_code,
         timeout_seconds=timeout_seconds,
     )
 
 
-def create_probe_result(probe: Probe) -> ProbeResult:
+def create_probe_result(
+    probe: Probe,
+    status: ProbeStatus,
+    actual_status_code: HTTPStatus | None,
+    failure_reason: FailureReason | None,
+    latency_ms: float | None,
+) -> ProbeResult:
     return ProbeResult(
         probe=probe,
-        status=Status.PASS,
-        actual_status_code=HTTPStatus.OK,
-        failure_reason=None,
-        timeout_seconds=3.0,
+        status=status,
+        actual_status_code=actual_status_code,
+        failure_reason=failure_reason,
+        latency_ms=latency_ms,
     )
