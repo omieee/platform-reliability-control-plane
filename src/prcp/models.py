@@ -18,6 +18,13 @@ class FailureReason(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class GateDecisionStatus(StrEnum):
+    PASS = "PASS"
+    WARN = "WARN"
+    BLOCK = "BLOCK"
+    UNKNOWN = "UNKNOWN"
+
+
 @dataclass
 class Service:
     service_name: str
@@ -49,8 +56,15 @@ class ProbeResult:
     latency_ms: float | None
 
 
+@dataclass
+class GateDecision:
+    probe_result: ProbeResult
+    status: GateDecisionStatus
+    reason: str
+
+
 def create_environment(
-    environment_name: str, region: str | None, cluster: str | None
+    environment_name: str, region: str | None = None, cluster: str | None = None
 ) -> Environment:
     if not environment_name:
         raise ValueError("environment name is required")
@@ -73,7 +87,7 @@ def create_http_probe(
     environment: Environment,
     service: Service,
     url: str,
-    expected_status_code: HTTPStatus,
+    expected_status_code: HTTPStatus = HTTPStatus.OK,
     timeout_seconds: float = 2.0,
 ) -> Probe:
     if not environment:
