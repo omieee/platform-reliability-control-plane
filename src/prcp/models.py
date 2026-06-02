@@ -1,17 +1,12 @@
 from dataclasses import dataclass
-from enum import IntEnum, StrEnum
+from enum import StrEnum
+from http import HTTPStatus
 
 
 class Status(StrEnum):
     FAIL = "FAIL"
     PASS = "PASS"
     UNKNOWN = "UNKNOWN"
-
-
-class StatusCode(IntEnum):
-    FAIL = 0
-    PASS = 200
-    UNKNOWN = -1
 
 
 class FailureReason(StrEnum):
@@ -41,7 +36,7 @@ class Probe:
     environment: Environment
     service: Service
     url: str
-    expected_status_code: int = 200
+    expected_status_code: HTTPStatus = HTTPStatus.OK
     timeout_seconds: float = 2.0
 
 
@@ -49,21 +44,21 @@ class Probe:
 class ProbeResult:
     probe: Probe
     status: Status
-    actual_status_code: StatusCode
+    actual_status_code: HTTPStatus | None
     failure_reason: FailureReason | None
-    latency_ms: float | None
+    timeout_seconds: float | None
 
 
 def create_environment(
     name: str, region: str | None, cluster: str | None
-) -> Environment | ValueError:
+) -> Environment:
     if not name:
         raise ValueError("environment name is required")
     env: Environment = Environment(name=name, region=region, cluster=cluster)
     return env
 
 
-def create_service(name: str, base_url: str | None) -> Service | ValueError:
+def create_service(name: str, base_url: str | None) -> Service:
     if not name:
         raise ValueError("service name is required")
     serv: Service = Service(name=name, base_url=base_url)
@@ -74,9 +69,9 @@ def create_http_proble(
     environment: Environment,
     service: Service,
     url: str,
-    expected_status_code: int = 200,
+    expected_status_code: HTTPStatus,
     timeout_seconds: float = 2.0,
-) -> Probe | TypeError:
+) -> Probe:
     if not environment:
         raise ValueError("you need to have an environment up and ready")
     if not service:
@@ -90,7 +85,7 @@ def create_http_proble(
         environment=environment,
         service=service,
         url=url,
-        expected_status_code=expected_status_code,
+        expected_status_code=HTTPStatus.OK,
         timeout_seconds=timeout_seconds,
     )
 
@@ -99,7 +94,7 @@ def create_probe_result(probe: Probe) -> ProbeResult:
     return ProbeResult(
         probe=probe,
         status=Status.PASS,
-        actual_status_code=StatusCode.PASS,
+        actual_status_code=HTTPStatus.OK,
         failure_reason=None,
-        latency_ms=3.0,
+        timeout_seconds=3.0,
     )
