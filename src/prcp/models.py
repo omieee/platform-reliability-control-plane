@@ -27,13 +27,13 @@ class GateDecisionStatus(StrEnum):
 
 @dataclass
 class Service:
-    service_name: str
-    service_url: str
+    name: str
+    url: str
 
 
 @dataclass
 class Environment:
-    environment_name: str
+    name: str
     region: str | None = None
     cluster: str | None = None
 
@@ -69,7 +69,7 @@ def create_environment(
     if not environment_name:
         raise ValueError("environment name is required")
     env: Environment = Environment(
-        environment_name=environment_name, region=region, cluster=cluster
+        name=environment_name, region=region, cluster=cluster
     )
     return env
 
@@ -79,7 +79,7 @@ def create_service(service_name: str, service_url: str) -> Service:
         raise ValueError("service name is required")
     if not service_url.startswith(("http://", "https://")):
         raise ValueError("service url must start with http:// or https://")
-    serv: Service = Service(service_name=service_name, service_url=service_url)
+    serv: Service = Service(name=service_name, url=service_url)
     return serv
 
 
