@@ -23,9 +23,6 @@ class InMemoryEnvironmentRepository:
         return list(self._environments.values())
 
 
-"""Services Repository"""
-
-
 class ServiceRepository(Protocol):
     def save(self, service: Service) -> None: ...
     def get_by_name(self, service_name: str) -> Service | None: ...

@@ -18,13 +18,6 @@ class FailureReason(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-class GateDecisionStatus(StrEnum):
-    PASS = "PASS"
-    WARN = "WARN"
-    BLOCK = "BLOCK"
-    UNKNOWN = "UNKNOWN"
-
-
 @dataclass
 class Service:
     name: str
@@ -56,21 +49,12 @@ class ProbeResult:
     latency_ms: float | None
 
 
-@dataclass
-class GateDecision:
-    probe_result: ProbeResult
-    status: GateDecisionStatus
-    reason: str
-
-
 def create_environment(
     environment_name: str, region: str | None = None, cluster: str | None = None
 ) -> Environment:
     if not environment_name:
         raise ValueError("environment name is required")
-    env: Environment = Environment(
-        name=environment_name, region=region, cluster=cluster
-    )
+    env = Environment(name=environment_name, region=region, cluster=cluster)
     return env
 
 
@@ -79,7 +63,7 @@ def create_service(service_name: str, service_url: str) -> Service:
         raise ValueError("service name is required")
     if not service_url.startswith(("http://", "https://")):
         raise ValueError("service url must start with http:// or https://")
-    serv: Service = Service(name=service_name, url=service_url)
+    serv = Service(name=service_name, url=service_url)
     return serv
 
 

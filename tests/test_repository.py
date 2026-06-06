@@ -65,7 +65,15 @@ def test_in_memory_environment_repository_matches_protocol() -> None:
     assert repository.get_by_name("preprod") == environment
 
 
-"""Services Repository Testing"""
+def test_same_environment_name_overwrites_old_environment() -> None:
+    env_repo = InMemoryEnvironmentRepository()
+    old_env = create_environment(environment_name="pre-prod", region="eu-gb")
+    new_env = create_environment(environment_name="pre-prod", region="us-south")
+    env_repo.save(old_env)
+    env_repo.save(new_env)
+    ret_env = env_repo.get_by_name("pre-prod")
+    assert ret_env is not None
+    assert ret_env.region == "us-south"
 
 
 def test_new_service_starts_with_empty_service() -> None:
@@ -73,7 +81,7 @@ def test_new_service_starts_with_empty_service() -> None:
     assert serv_repo.list_all() == []
 
 
-def test_sevice_save_make_it_retrivable() -> None:
+def test_service_save_makes_it_retrievable() -> None:
     serv_repo = InMemoryServiceRepository()
 
     serv = create_service(
@@ -105,16 +113,7 @@ def test_get_missing_service_returns_none_v_protocol() -> None:
     assert serv_repo.get_by_name(service_name="signup-api") is None
 
 
-def test_get_missing_service_returns_none_v_concrete() -> None:
-    serv_repo = InMemoryServiceRepository()
-    serv = create_service(
-        service_name="payments-api", service_url="http://api.payment.abc.com"
-    )
-    serv_repo.save(serv)
-    assert serv_repo.get_by_name(service_name="signup-api") is None
-
-
-def test_list_servicess_returns_saved_services() -> None:
+def test_list_services_returns_saved_services() -> None:
     serv_repo = InMemoryServiceRepository()
     serv = create_service(
         service_name="payments-api", service_url="http://api.payment.abc.com"
@@ -125,7 +124,11 @@ def test_list_servicess_returns_saved_services() -> None:
 
     serv_repo.save(serv)
     serv_repo.save(serv1)
-    assert serv and serv1 in serv_repo.list_all()
+    services = serv_repo.list_all()
+
+    assert serv in services
+    assert serv1 in services
+    assert len(services) == 2
 
 
 def test_same_service_name_overwrites_old_service() -> None:
