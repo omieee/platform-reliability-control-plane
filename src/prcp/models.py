@@ -51,7 +51,7 @@ class Probe:
 class ProbeResult:
     probe: Probe
     status: ProbeStatus
-    actual_status_code: HTTPStatus | None
+    actual_status_code: int | None
     failure_reason: FailureReason | None
     latency_ms: float | None
 
@@ -90,9 +90,9 @@ def create_http_probe(
     expected_status_code: HTTPStatus = HTTPStatus.OK,
     timeout_seconds: float = 2.0,
 ) -> Probe:
-    if not environment:
+    if environment is None:
         raise ValueError("you need to have an environment up and ready")
-    if not service:
+    if service is None:
         raise ValueError("you need to have a service up and ready")
     if not url.startswith(("http://", "https://")):
         raise ValueError("url must start with http:// or https://")
@@ -111,7 +111,7 @@ def create_http_probe(
 def create_probe_result(
     probe: Probe,
     status: ProbeStatus,
-    actual_status_code: HTTPStatus | None,
+    actual_status_code: int | None,
     failure_reason: FailureReason | None,
     latency_ms: float | None,
 ) -> ProbeResult:
@@ -119,6 +119,6 @@ def create_probe_result(
         probe=probe,
         status=status,
         actual_status_code=actual_status_code,
-        failure_reason=failure_reason,
         latency_ms=latency_ms,
+        failure_reason=failure_reason,
     )

@@ -1,43 +1,43 @@
 import time
+from collections.abc import Callable
 
 import httpx
 
 from prcp.models import (
-    FAILURE_CONNECTION_ERROR,
-    FAILURE_HTTP_STATUS_MISMATCH,
-    FAILURE_NONE,
-    FAILURE_TIMEOUT,
-    STATUS_FAIL,
-    STATUS_PASS,
-    STATUS_UNKNOWN,
+    FailureReason,
+    Probe,
+    ProbeResult,
+    ProbeStatus,
     create_probe_result,
 )
 
+HttpGet = Callable[..., httpx.Response]
 
-def http_check(probe):
+
+def http_check(
+    probe: Probe,
+    http_get: HttpGet = httpx.get,
+) -> ProbeResult:
     start = time.perf_counter()
 
     try:
-        response = httpx.get(
-            probe["url"],
-            timeout=probe["timeout_seconds"],
-        )
+        response = http_get(probe.url, timeout=probe.timeout_seconds)
         latency_ms = (time.perf_counter() - start) * 1000
 
-        if response.status_code == probe["expected_status_code"]:
+        if response.status_code == probe.expected_status_code:
             return create_probe_result(
-                service_name=probe["service_name"],
-                status=STATUS_PASS,
+                probe=probe,
+                status=ProbeStatus.PASS,
                 actual_status_code=response.status_code,
-                failure_reason=FAILURE_NONE,
+                failure_reason=None,
                 latency_ms=latency_ms,
             )
 
         return create_probe_result(
-            service_name=probe["service_name"],
-            status=STATUS_FAIL,
+            probe=probe,
+            status=ProbeStatus.FAIL,
             actual_status_code=response.status_code,
-            failure_reason=FAILURE_HTTP_STATUS_MISMATCH,
+            failure_reason=FailureReason.HTTP_ERROR,
             latency_ms=latency_ms,
         )
 
@@ -45,10 +45,10 @@ def http_check(probe):
         latency_ms = (time.perf_counter() - start) * 1000
 
         return create_probe_result(
-            service_name=probe["service_name"],
-            status=STATUS_FAIL,
+            probe=probe,
+            status=ProbeStatus.FAIL,
             actual_status_code=None,
-            failure_reason=FAILURE_TIMEOUT,
+            failure_reason=FailureReason.TIMEOUT,
             latency_ms=latency_ms,
         )
 
@@ -56,9 +56,9 @@ def http_check(probe):
         latency_ms = (time.perf_counter() - start) * 1000
 
         return create_probe_result(
-            service_name=probe["service_name"],
-            status=STATUS_UNKNOWN,
+            probe=probe,
+            status=ProbeStatus.UNKNOWN,
             actual_status_code=None,
-            failure_reason=FAILURE_CONNECTION_ERROR,
+            failure_reason=FailureReason.CONNECTION_ERROR,
             latency_ms=latency_ms,
         )
