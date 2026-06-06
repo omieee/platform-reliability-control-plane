@@ -68,8 +68,8 @@ def create_service(service_name: str, service_url: str) -> Service:
 
 
 def create_http_probe(
-    environment: Environment,
-    service: Service,
+    environment: Environment | None,
+    service: Service | None,
     url: str,
     expected_status_code: HTTPStatus = HTTPStatus.OK,
     timeout_seconds: float = 2.0,
