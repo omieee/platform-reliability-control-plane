@@ -1,62 +1,108 @@
-VALID_ENVIRONMENTS = {"dev", "preprod", "prod"}
-
-STATUS_PASS = "pass"
-STATUS_FAIL = "fail"
-STATUS_UNKNOWN = "unknown"
-
-FAILURE_NONE = "none"
-FAILURE_TIMEOUT = "timeout"
-FAILURE_CONNECTION_ERROR = "connection_error"
-FAILURE_HTTP_STATUS_MISMATCH = "http_status_mismatch"
-FAILURE_UNKNOWN_ERROR = "unknown_error"
+from dataclasses import dataclass
+from enum import StrEnum
+from http import HTTPStatus
 
 
-def create_service(name, environment, base_url):
-    if not name:
-        raise ValueError("service name is required")
-
-    if environment not in VALID_ENVIRONMENTS:
-        raise ValueError("invalid environment")
-
-    if not base_url.startswith(("http://", "https://")):
-        raise ValueError("base_url must start with http:// or https://")
-
-    return {
-        "name": name,
-        "environment": environment,
-        "base_url": base_url,
-    }
+class ProbeStatus(StrEnum):
+    FAIL = "FAIL"
+    PASS = "PASS"
+    UNKNOWN = "UNKNOWN"
 
 
-def create_http_probe(service_name, url, expected_status_code=200, timeout_seconds=2.0):
+class FailureReason(StrEnum):
+    TIMEOUT = "TIMEOUT"
+    DNS_ERROR = "DNS_ERROR"
+    CONNECTION_ERROR = "CONNECTION_ERROR"
+    HTTP_ERROR = "HTTP_ERROR"
+    INVALID_RESPONSE = "INVALID_RESPONSE"
+    UNKNOWN = "UNKNOWN"
+
+
+@dataclass
+class Service:
+    name: str
+    url: str
+
+
+@dataclass
+class Environment:
+    name: str
+    region: str | None = None
+    cluster: str | None = None
+
+
+@dataclass
+class Probe:
+    environment: Environment
+    service: Service
+    url: str
+    expected_status_code: HTTPStatus = HTTPStatus.OK
+    timeout_seconds: float = 2.0
+
+
+@dataclass
+class ProbeResult:
+    probe: Probe
+    status: ProbeStatus
+    actual_status_code: int | None
+    failure_reason: FailureReason | None
+    latency_ms: float | None
+
+
+def create_environment(
+    environment_name: str, region: str | None = None, cluster: str | None = None
+) -> Environment:
+    if not environment_name:
+        raise ValueError("environment name is required")
+    env = Environment(name=environment_name, region=region, cluster=cluster)
+    return env
+
+
+def create_service(service_name: str, service_url: str) -> Service:
     if not service_name:
-        raise ValueError("service_name is required")
+        raise ValueError("service name is required")
+    if not service_url.startswith(("http://", "https://")):
+        raise ValueError("service url must start with http:// or https://")
+    serv = Service(name=service_name, url=service_url)
+    return serv
 
+
+def create_http_probe(
+    environment: Environment | None,
+    service: Service | None,
+    url: str,
+    expected_status_code: HTTPStatus = HTTPStatus.OK,
+    timeout_seconds: float = 2.0,
+) -> Probe:
+    if environment is None:
+        raise ValueError("you need to have an environment up and ready")
+    if service is None:
+        raise ValueError("you need to have a service up and ready")
     if not url.startswith(("http://", "https://")):
         raise ValueError("url must start with http:// or https://")
-
     if timeout_seconds <= 0:
-        raise ValueError("timeout_seconds must be greater than zero")
+        raise ValueError("timeout seconds must be greater than zero")
 
-    return {
-        "service_name": service_name,
-        "url": url,
-        "expected_status_code": expected_status_code,
-        "timeout_seconds": timeout_seconds,
-    }
+    return Probe(
+        environment=environment,
+        service=service,
+        url=url,
+        expected_status_code=expected_status_code,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 def create_probe_result(
-    service_name,
-    status,
-    actual_status_code,
-    failure_reason,
-    latency_ms,
-):
-    return {
-        "service_name": service_name,
-        "status": status,
-        "actual_status_code": actual_status_code,
-        "failure_reason": failure_reason,
-        "latency_ms": latency_ms,
-    }
+    probe: Probe,
+    status: ProbeStatus,
+    actual_status_code: int | None,
+    failure_reason: FailureReason | None,
+    latency_ms: float | None,
+) -> ProbeResult:
+    return ProbeResult(
+        probe=probe,
+        status=status,
+        actual_status_code=actual_status_code,
+        latency_ms=latency_ms,
+        failure_reason=failure_reason,
+    )

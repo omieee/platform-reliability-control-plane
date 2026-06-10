@@ -1,118 +1,110 @@
+from http import HTTPStatus
+
 import httpx
 
-from prcp import checker
+from prcp.checker import http_check
 from prcp.models import (
-    FAILURE_CONNECTION_ERROR,
-    FAILURE_HTTP_STATUS_MISMATCH,
-    FAILURE_NONE,
-    FAILURE_TIMEOUT,
-    STATUS_FAIL,
-    STATUS_PASS,
-    STATUS_UNKNOWN,
+    FailureReason,
+    ProbeStatus,
+    create_environment,
     create_http_probe,
+    create_service,
 )
 
 
-class FakeResponse:
-    def __init__(self, status_code):
-        self.status_code = status_code
-
-
-def test_http_check_returns_pass_when_status_matches(monkeypatch):
-    def fake_get(url, timeout):
-        return FakeResponse(status_code=200)
-
-    monkeypatch.setattr(checker.httpx, "get", fake_get)
-
-    probe = create_http_probe(
+def create_test_probe(
+    expected_status_code: HTTPStatus = HTTPStatus.OK,
+):
+    environment = create_environment(
+        environment_name="preprod",
+        region="us-south",
+    )
+    service = create_service(
         service_name="payment-api",
+        service_url="https://payment.example.com",
+    )
+
+    return create_http_probe(
+        environment=environment,
+        service=service,
         url="https://payment.example.com/health",
+        expected_status_code=expected_status_code,
+        timeout_seconds=2.0,
     )
 
-    result = checker.http_check(probe)
 
-    assert result["service_name"] == "payment-api"
-    assert result["status"] == STATUS_PASS
-    assert result["actual_status_code"] == 200
-    assert result["failure_reason"] == FAILURE_NONE
-    assert result["latency_ms"] >= 0
+def test_http_check_returns_pass_when_status_matches() -> None:
+    def fake_http_get(url: str, timeout: float) -> httpx.Response:
+        return httpx.Response(status_code=200)
 
+    probe = create_test_probe(expected_status_code=HTTPStatus.OK)
 
-def test_http_check_returns_fail_when_status_does_not_match(monkeypatch):
-    def fake_get(url, timeout):
-        return FakeResponse(status_code=500)
+    result = http_check(probe, http_get=fake_http_get)
 
-    monkeypatch.setattr(checker.httpx, "get", fake_get)
-
-    probe = create_http_probe(
-        service_name="payment-api",
-        url="https://payment.example.com/health",
-    )
-
-    result = checker.http_check(probe)
-
-    assert result["service_name"] == "payment-api"
-    assert result["status"] == STATUS_FAIL
-    assert result["actual_status_code"] == 500
-    assert result["failure_reason"] == FAILURE_HTTP_STATUS_MISMATCH
-    assert result["latency_ms"] >= 0
+    assert result.probe == probe
+    assert result.status == ProbeStatus.PASS
+    assert result.actual_status_code == 200
+    assert result.failure_reason is None
+    assert result.latency_ms is not None
+    assert result.latency_ms >= 0
 
 
-def test_http_check_uses_expected_status_code(monkeypatch):
-    def fake_get(url, timeout):
-        return FakeResponse(status_code=204)
+def test_http_check_returns_fail_when_status_does_not_match() -> None:
+    def fake_http_get(url: str, timeout: float) -> httpx.Response:
+        return httpx.Response(status_code=500)
 
-    monkeypatch.setattr(checker.httpx, "get", fake_get)
+    probe = create_test_probe(expected_status_code=HTTPStatus.OK)
 
-    probe = create_http_probe(
-        service_name="payment-api",
-        url="https://payment.example.com/ready",
-        expected_status_code=204,
-    )
+    result = http_check(probe, http_get=fake_http_get)
 
-    result = checker.http_check(probe)
-
-    assert result["status"] == STATUS_PASS
-    assert result["actual_status_code"] == 204
-    assert result["failure_reason"] == FAILURE_NONE
+    assert result.probe == probe
+    assert result.status == ProbeStatus.FAIL
+    assert result.actual_status_code == 500
+    assert result.failure_reason == FailureReason.HTTP_ERROR
+    assert result.latency_ms is not None
+    assert result.latency_ms >= 0
 
 
-def test_http_check_returns_fail_on_timeout(monkeypatch):
-    def fake_get(url, timeout):
+def test_http_check_uses_custom_expected_status_code() -> None:
+    def fake_http_get(url: str, timeout: float) -> httpx.Response:
+        return httpx.Response(status_code=204)
+
+    probe = create_test_probe(expected_status_code=HTTPStatus.NO_CONTENT)
+
+    result = http_check(probe, http_get=fake_http_get)
+
+    assert result.status == ProbeStatus.PASS
+    assert result.actual_status_code == 204
+    assert result.failure_reason is None
+
+
+def test_http_check_returns_fail_on_timeout() -> None:
+    def fake_http_get(url: str, timeout: float) -> httpx.Response:
         raise httpx.TimeoutException("request timed out")
 
-    monkeypatch.setattr(checker.httpx, "get", fake_get)
+    probe = create_test_probe(expected_status_code=HTTPStatus.OK)
 
-    probe = create_http_probe(
-        service_name="payment-api",
-        url="https://payment.example.com/health",
-        timeout_seconds=1.0,
-    )
+    result = http_check(probe, http_get=fake_http_get)
 
-    result = checker.http_check(probe)
-
-    assert result["service_name"] == "payment-api"
-    assert result["status"] == STATUS_FAIL
-    assert result["actual_status_code"] is None
-    assert result["failure_reason"] == FAILURE_TIMEOUT
-    assert result["latency_ms"] >= 0
+    assert result.probe == probe
+    assert result.status == ProbeStatus.FAIL
+    assert result.actual_status_code is None
+    assert result.failure_reason == FailureReason.TIMEOUT
+    assert result.latency_ms is not None
+    assert result.latency_ms >= 0
 
 
-def test_http_check_returns_unknown_on_request_error(monkeypatch):
-    def fake_get(url, timeout):
+def test_http_check_returns_unknown_on_request_error() -> None:
+    def fake_http_get(url: str, timeout: float) -> httpx.Response:
         raise httpx.RequestError("connection failed")
 
-    monkeypatch.setattr(checker.httpx, "get", fake_get)
+    probe = create_test_probe(expected_status_code=HTTPStatus.OK)
 
-    probe = create_http_probe(
-        service_name="payment-api",
-        url="https://payment.example.com/health",
-    )
+    result = http_check(probe, http_get=fake_http_get)
 
-    result = checker.http_check(probe)
-
-    assert result["service_name"] == "payment-api"
-    assert result["status"] == STATUS_UNKNOWN
-    assert result["actual_status_code"] is None
-    assert result["failure_reason"] == FAILURE_CONNECTION_ERROR
-    assert result["latency_ms"] >= 0
+    assert result.probe == probe
+    assert result.status == ProbeStatus.UNKNOWN
+    assert result.actual_status_code is None
+    assert result.failure_reason == FailureReason.CONNECTION_ERROR
+    assert result.latency_ms is not None
+    assert result.latency_ms >= 0
