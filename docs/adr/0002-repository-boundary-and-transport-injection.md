@@ -97,7 +97,7 @@ Repository behavior is tested through:
 * missing object returns `None`
 * list all objects
 * duplicate name overwrite behavior
-* protocol compatibility smoke tests
+* protocol compatibility is checked through static mypy check at the binding sites
 
 HTTP checker behavior is tested through injected fake HTTP functions for:
 
