@@ -1,20 +1,25 @@
 from fastapi import FastAPI
 
-from prcp.api.schemas import ServiceCreate
+from prcp.api.schemas import HealthOut, ReadyOut, ServiceCreate, ServiceOut
+from prcp.models import create_service
+from prcp.repository import InMemoryServiceRepository
 
 app = FastAPI(title="Platform Reliability Control Plane")
+service_repository = InMemoryServiceRepository()
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> HealthOut:
+    return HealthOut(status="ok")
 
 
 @app.get("/ready")
-def ready() -> dict[str, str]:
-    return {"status": "ready"}
+def ready() -> ReadyOut:
+    return ReadyOut(status="ready")
 
 
-@app.post("/service")
-def create_service(service: ServiceCreate):
-    return service.create_service()
+@app.post("/services")
+def create_service_endpoint(request: ServiceCreate) -> ServiceOut:
+    service = create_service(service_name=request.name, service_url=request.url)
+    service_repository.save(service=service)
+    return ServiceOut(name=service.name, url=service.url)

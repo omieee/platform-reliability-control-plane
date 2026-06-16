@@ -1,7 +1,26 @@
 from pydantic import BaseModel, Field, field_validator
 
-from prcp.models import Service
-from prcp.repository import InMemoryServiceRepository
+
+class ServiceCreate(BaseModel):
+    name: str = Field(min_length=1, title="Service Name")
+    url: str = Field(min_length=1, title="Service URL")
+
+    @field_validator("name")
+    @classmethod
+    def valid_service_name(cls, value: str) -> str:
+        stripped_value = value.strip()
+        if not stripped_value:
+            raise ValueError("name cannot be empty")
+        else:
+            return stripped_value
+
+    @field_validator("url")
+    @classmethod
+    def valid_url(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("Service URL must start with http or https")
+        else:
+            return value
 
 
 class HealthOut(BaseModel):
@@ -9,22 +28,9 @@ class HealthOut(BaseModel):
 
 
 class ReadyOut(BaseModel):
-    ready: str
+    status: str
 
 
-class ServiceCreate(BaseModel):
-    name: str = Field(min_length=1, title="Service Name")
-    url: str = Field(min_length=1, title="Service URL")
-
-    @field_validator("url")
-    def valid_url(u):
-        if u.startswith(("http://", "https://")):
-            return u
-        else:
-            raise ValueError("Service URL must start with http or https")
-
-    def create_service(self) -> Service | None:
-        serv = Service(self.name, self.url)
-        repo = InMemoryServiceRepository()
-        repo.save(service=serv)
-        return repo.get_by_name(service_name=self.name)
+class ServiceOut(BaseModel):
+    name: str
+    url: str
