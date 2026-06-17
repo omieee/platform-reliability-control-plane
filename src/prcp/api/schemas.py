@@ -11,16 +11,14 @@ class ServiceCreate(BaseModel):
         stripped_value = value.strip()
         if not stripped_value:
             raise ValueError("name cannot be empty")
-        else:
-            return stripped_value
+        return stripped_value
 
     @field_validator("url")
     @classmethod
     def valid_url(cls, value: str) -> str:
         if not value.startswith(("http://", "https://")):
             raise ValueError("Service URL must start with http or https")
-        else:
-            return value
+        return value
 
 
 class HealthOut(BaseModel):
