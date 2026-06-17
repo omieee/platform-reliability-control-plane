@@ -1,4 +1,4 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, HTTPException, status
 
 from prcp.api.schemas import HealthOut, ReadyOut, ServiceCreate, ServiceOut
 from prcp.models import create_service
@@ -22,4 +22,24 @@ def ready() -> ReadyOut:
 def create_service_endpoint(request: ServiceCreate) -> ServiceOut:
     service = create_service(service_name=request.name, service_url=request.url)
     service_repository.save(service=service)
+    return ServiceOut(name=service.name, url=service.url)
+
+
+@app.get("/services", response_model=list[ServiceOut], status_code=status.HTTP_200_OK)
+def get_all_services() -> list[ServiceOut]:
+    services = service_repository.list_all()
+    return [ServiceOut(name=service.name, url=service.url) for service in services]
+
+
+@app.get(
+    "/services/{service_name}",
+    response_model=ServiceOut,
+    status_code=status.HTTP_200_OK,
+)
+def get_service(service_name: str) -> ServiceOut:
+    service = service_repository.get_by_name(service_name=service_name)
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
+        )
     return ServiceOut(name=service.name, url=service.url)
