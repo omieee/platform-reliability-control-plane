@@ -1,11 +1,13 @@
-from fastapi import FastAPI, HTTPException, status
+from typing import Annotated
 
+from fastapi import Depends, FastAPI, HTTPException, status
+
+from prcp.api.dependencies import get_service_repository
 from prcp.api.schemas import HealthOut, ReadyOut, ServiceCreate, ServiceOut
 from prcp.models import create_service
-from prcp.repository import InMemoryServiceRepository
+from prcp.repository import ServiceRepository
 
 app = FastAPI(title="Platform Reliability Control Plane")
-service_repository = InMemoryServiceRepository()
 
 
 @app.get("/health", response_model=HealthOut)
@@ -19,15 +21,23 @@ def ready() -> ReadyOut:
 
 
 @app.post("/services", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
-def create_service_endpoint(request: ServiceCreate) -> ServiceOut:
+def create_service_endpoint(
+    request: ServiceCreate,
+    repository: Annotated[ServiceRepository, Depends(get_service_repository)],
+) -> ServiceOut:
     service = create_service(service_name=request.name, service_url=str(request.url))
-    service_repository.save(service=service)
+    repository.save(service=service)
     return ServiceOut.model_validate(service)
 
 
 @app.get("/services", response_model=list[ServiceOut], status_code=status.HTTP_200_OK)
-def get_all_services() -> list[ServiceOut]:
-    services = service_repository.list_all()
+def get_all_services(
+    repository: Annotated[
+        ServiceRepository,
+        Depends(get_service_repository),
+    ],
+) -> list[ServiceOut]:
+    services = repository.list_all()
     return [ServiceOut.model_validate(service) for service in services]
 
 
@@ -36,8 +46,14 @@ def get_all_services() -> list[ServiceOut]:
     response_model=ServiceOut,
     status_code=status.HTTP_200_OK,
 )
-def get_service(service_name: str) -> ServiceOut:
-    service = service_repository.get_by_name(service_name=service_name)
+def get_service(
+    service_name: str,
+    repository: Annotated[
+        ServiceRepository,
+        Depends(get_service_repository),
+    ],
+) -> ServiceOut:
+    service = repository.get_by_name(service_name=service_name)
     if service is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
