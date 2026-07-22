@@ -1,12 +1,8 @@
 from fastapi.testclient import TestClient
 
-from prcp.api.main import app
 
-testapp = TestClient(app=app)
-
-
-def test_service_create_returns_201() -> None:
-    response = testapp.post(
+def test_service_create_returns_201(client: TestClient) -> None:
+    response = client.post(
         url="/services",
         json={"name": "payments-api", "url": "https://payments.demo.com"},
     )
@@ -17,24 +13,24 @@ def test_service_create_returns_201() -> None:
     }
 
 
-def test_service_name_empty_raise_value_error() -> None:
-    response = testapp.post(
+def test_service_name_empty_raise_value_error(client: TestClient) -> None:
+    response = client.post(
         url="/services",
         json={"name": "  ", "url": "https://payments.demo.com"},
     )
     assert response.status_code == 422
 
 
-def test_incorrect_service_url_raise_value_error() -> None:
-    response = testapp.post(
+def test_incorrect_service_url_raise_value_error(client: TestClient) -> None:
+    response = client.post(
         url="/services",
         json={"name": "payments-api", "url": "ftp://payment.demo.com"},
     )
     assert response.status_code == 422
 
 
-def test_list_services_returns_created_services() -> None:
-    testapp.post(
+def test_list_services_returns_created_services(client: TestClient) -> None:
+    client.post(
         url="/services",
         json={
             "name": "payments-api",
@@ -42,7 +38,7 @@ def test_list_services_returns_created_services() -> None:
         },
     )
 
-    response = testapp.get("/services")
+    response = client.get("/services")
 
     assert response.status_code == 200
     assert response.json() == [
@@ -53,15 +49,15 @@ def test_list_services_returns_created_services() -> None:
     ]
 
 
-def test_get_service_by_name_is_success() -> None:
-    testapp.post(
+def test_get_service_by_name_is_success(client: TestClient) -> None:
+    client.post(
         url="/services",
         json={
             "name": "payments-api",
             "url": "https://payments.demo.com",
         },
     )
-    response = testapp.get(url="/services/payments-api")
+    response = client.get(url="/services/payments-api")
     assert response.status_code == 200
     assert response.json() == {
         "name": "payments-api",
@@ -69,8 +65,8 @@ def test_get_service_by_name_is_success() -> None:
     }
 
 
-def test_get_service_by_name_raise_404_if_not_found() -> None:
-    response = testapp.get("/services/missing-service")
+def test_get_service_by_name_raise_404_if_not_found(client: TestClient) -> None:
+    response = client.get("/services/missing-service")
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Service not found"}
