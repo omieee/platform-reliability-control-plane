@@ -54,7 +54,9 @@ def test_create_service_rejects_empty_name() -> None:
 
 
 def test_create_service_rejects_invalid_url() -> None:
-    with pytest.raises(ValueError, match="service url must start"):
+    with pytest.raises(
+        ValueError, match="service URL must be a valid HTTP or HTTPS URL"
+    ):
         create_service(
             service_name="payment-api",
             service_url="payment.example.com",

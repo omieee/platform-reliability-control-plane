@@ -5,7 +5,7 @@ from prcp.api.main import app
 testapp = TestClient(app=app)
 
 
-def test_service_crete_returns_201() -> None:
+def test_service_create_returns_201() -> None:
     response = testapp.post(
         url="/services",
         json={"name": "payments-api", "url": "https://payments.demo.com"},
@@ -13,7 +13,7 @@ def test_service_crete_returns_201() -> None:
     assert response.status_code == 201
     assert response.json() == {
         "name": "payments-api",
-        "url": "https://payments.demo.com",
+        "url": "https://payments.demo.com/",
     }
 
 
@@ -48,7 +48,7 @@ def test_list_services_returns_created_services() -> None:
     assert response.json() == [
         {
             "name": "payments-api",
-            "url": "https://payments.demo.com",
+            "url": "https://payments.demo.com/",
         }
     ]
 
@@ -65,7 +65,7 @@ def test_get_service_by_name_is_success() -> None:
     assert response.status_code == 200
     assert response.json() == {
         "name": "payments-api",
-        "url": "https://payments.demo.com",
+        "url": "https://payments.demo.com/",
     }
 
 

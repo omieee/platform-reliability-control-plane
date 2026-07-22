@@ -20,15 +20,15 @@ def ready() -> ReadyOut:
 
 @app.post("/services", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
 def create_service_endpoint(request: ServiceCreate) -> ServiceOut:
-    service = create_service(service_name=request.name, service_url=request.url)
+    service = create_service(service_name=request.name, service_url=str(request.url))
     service_repository.save(service=service)
-    return ServiceOut(name=service.name, url=service.url)
+    return ServiceOut.model_validate(service)
 
 
 @app.get("/services", response_model=list[ServiceOut], status_code=status.HTTP_200_OK)
 def get_all_services() -> list[ServiceOut]:
     services = service_repository.list_all()
-    return [ServiceOut(name=service.name, url=service.url) for service in services]
+    return [ServiceOut.model_validate(service) for service in services]
 
 
 @app.get(
@@ -42,4 +42,4 @@ def get_service(service_name: str) -> ServiceOut:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Service not found"
         )
-    return ServiceOut(name=service.name, url=service.url)
+    return ServiceOut.model_validate(service)
