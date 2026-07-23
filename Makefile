@@ -1,7 +1,7 @@
 .PHONY: test lint format fix ready
 
 test:
-	python -m pytest
+	python -m pytest -vv
 
 lint:
 	python -m ruff check .

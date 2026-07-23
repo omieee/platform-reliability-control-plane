@@ -69,7 +69,13 @@ def test_get_service_by_name_raise_404_if_not_found(client: TestClient) -> None:
     response = client.get("/services/missing-service")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Service not found"}
+    assert response.json() == {
+        "detail": "Service not found",
+        "instance": "/services/missing-service",
+        "status": 404,
+        "title": "Not Found",
+        "type": "urn:prcp:error:http-404",
+    }
 
 
 def test_duplicate_service_returns_409(client: TestClient) -> None:
@@ -84,8 +90,11 @@ def test_duplicate_service_returns_409(client: TestClient) -> None:
     assert first_response.status_code == 201
     assert second_response.status_code == 409
     assert second_response.json() == {
-        "message": "Oops! payment-api already exist",
-        "resolution": "Use different name for the service",
+        "detail": "Service 'payment-api' already exists",
+        "instance": "/services",
+        "status": 409,
+        "title": "Service already exists",
+        "type": "urn:prcp:error:service-conflict",
     }
 
 

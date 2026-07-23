@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from prcp.exceptions import DuplicateServiceException
+from prcp.exceptions import DuplicateServiceError
 from prcp.models import Environment, Service
 
 
@@ -36,7 +36,7 @@ class InMemoryServiceRepository:
 
     def save(self, service: Service) -> None:
         if service.name in self._services:
-            raise DuplicateServiceException(service_name=service.name)
+            raise DuplicateServiceError(service_name=service.name)
         self._services[service.name] = service
 
     def get_by_name(self, service_name: str) -> Service | None:

@@ -1,26 +1,15 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, status
 
 from prcp.api.dependencies import get_service_repository
+from prcp.api.errors import register_error_handlers
 from prcp.api.schemas import HealthOut, ReadyOut, ServiceCreate, ServiceOut
-from prcp.exceptions import DuplicateServiceException
 from prcp.models import create_service
 from prcp.repository import ServiceRepository
 
 app = FastAPI(title="Platform Reliability Control Plane")
-
-
-@app.exception_handler(DuplicateServiceException)
-async def duplicate_service_handler(request: Request, exc: DuplicateServiceException):
-    return JSONResponse(
-        status_code=409,
-        content={
-            "message": f"Oops! {exc.service_name} already exist",
-            "resolution": "Use different name for the service",
-        },
-    )
+register_error_handlers(app)
 
 
 @app.get("/health", response_model=HealthOut)
