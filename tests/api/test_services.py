@@ -70,3 +70,43 @@ def test_get_service_by_name_raise_404_if_not_found(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Service not found"}
+
+
+def test_duplicate_service_returns_409(client: TestClient) -> None:
+    payload = {
+        "name": "payment-api",
+        "url": "https://payments.example.com",
+    }
+
+    first_response = client.post("/services", json=payload)
+    second_response = client.post("/services", json=payload)
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {
+        "message": "Oops! payment-api already exist",
+        "resolution": "Use different name for the service",
+    }
+
+
+def test_duplicate_service_does_not_overwrite_original(client: TestClient) -> None:
+    client.post(
+        "/services",
+        json={
+            "name": "payment-api",
+            "url": "https://version-one.example.com",
+        },
+    )
+
+    duplicate_response = client.post(
+        "/services",
+        json={
+            "name": "PAYMENT-API",
+            "url": "https://version-two.example.com",
+        },
+    )
+
+    stored_response = client.get("/services/payment-api")
+
+    assert duplicate_response.status_code == 409
+    assert stored_response.json()["url"] == "https://version-one.example.com/"

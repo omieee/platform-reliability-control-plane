@@ -1,6 +1,6 @@
 import pytest
 
-from prcp.exceptions import DuplicateServiceError
+from prcp.exceptions import DuplicateServiceException
 from prcp.models import create_environment, create_service
 from prcp.repository import (
     EnvironmentRepository,
@@ -148,7 +148,7 @@ def test_same_service_name_raises_duplicate_error() -> None:
 
     serv_repo.save(old_serv)
 
-    with pytest.raises(DuplicateServiceError):
+    with pytest.raises(DuplicateServiceException):
         serv_repo.save(new_serv)
 
     returned_service = serv_repo.get_by_name("signup-api")
