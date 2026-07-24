@@ -1,3 +1,6 @@
+import pytest
+
+from prcp.exceptions import DuplicateServiceError
 from prcp.models import create_environment, create_service
 from prcp.repository import (
     EnvironmentRepository,
@@ -131,16 +134,24 @@ def test_list_services_returns_saved_services() -> None:
     assert len(services) == 2
 
 
-def test_same_service_name_overwrites_old_service() -> None:
+def test_same_service_name_raises_duplicate_error() -> None:
     serv_repo = InMemoryServiceRepository()
+
     old_serv = create_service(
-        service_name="signup-api", service_url="http://api.v1.payment.abc.com"
+        service_name="signup-api",
+        service_url="http://api.v1.payment.abc.com",
     )
-    new_serv1 = create_service(
-        service_name="signup-api", service_url="http://api.v2.signup.abc.com"
+    new_serv = create_service(
+        service_name="signup-api",
+        service_url="http://api.v2.signup.abc.com",
     )
+
     serv_repo.save(old_serv)
-    serv_repo.save(new_serv1)
-    ret_serv = serv_repo.get_by_name("signup-api")
-    assert ret_serv is not None
-    assert ret_serv.url.startswith("http://api.v2.")
+
+    with pytest.raises(DuplicateServiceError):
+        serv_repo.save(new_serv)
+
+    returned_service = serv_repo.get_by_name("signup-api")
+
+    assert returned_service is not None
+    assert returned_service.url == "http://api.v1.payment.abc.com"

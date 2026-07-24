@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from http import HTTPStatus
+from urllib.parse import urlsplit
 
 
 class ProbeStatus(StrEnum):
@@ -61,9 +62,10 @@ def create_environment(
 def create_service(service_name: str, service_url: str) -> Service:
     if not service_name:
         raise ValueError("service name is required")
-    if not service_url.startswith(("http://", "https://")):
-        raise ValueError("service url must start with http:// or https://")
-    serv = Service(name=service_name, url=service_url)
+    parsed_url = urlsplit(service_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        raise ValueError("service URL must be a valid HTTP or HTTPS URL")
+    serv = Service(name=service_name.strip().lower(), url=service_url)
     return serv
 
 
