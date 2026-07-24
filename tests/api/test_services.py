@@ -21,12 +21,22 @@ def test_service_name_empty_raise_value_error(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-def test_incorrect_service_url_raise_value_error(client: TestClient) -> None:
+def test_invalid_url_returns_validation_error(client: TestClient) -> None:
     response = client.post(
         url="/services",
         json={"name": "payments-api", "url": "ftp://payment.demo.com"},
     )
     assert response.status_code == 422
+    body = response.json()
+
+    assert body["type"] == "urn:prcp:error:validation-failed"
+    assert body["title"] == "Validation failed"
+    assert body["status"] == 422
+    assert body["detail"] == "One or more request fields are invalid."
+    assert body["instance"] == "/services"
+
+    assert body["errors"][0]["field"] == "body.url"
+    assert "URL scheme" in body["errors"][0]["message"]
 
 
 def test_list_services_returns_created_services(client: TestClient) -> None:

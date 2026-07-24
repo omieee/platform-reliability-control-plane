@@ -74,9 +74,10 @@ async def http_exception_handler(
     request: Request,
     exc: StarletteHTTPException,
 ) -> JSONResponse:
+
     error = ErrorOut(
         type=f"urn:prcp:error:http-{exc.status_code}",
-        title=HTTPStatus(exc.status_code).phrase,
+        title=get_http_title(exc.status_code),
         status=exc.status_code,
         detail=str(exc.detail),
         instance=request.url.path,
@@ -98,3 +99,15 @@ def register_error_handlers(app: FastAPI) -> None:
         StarletteHTTPException,
         cast(ExceptionHandler, http_exception_handler),
     )
+
+
+"""
+Some helper functions
+"""
+
+
+def get_http_title(status_code: int) -> str:
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "Custom HTTP Error"
