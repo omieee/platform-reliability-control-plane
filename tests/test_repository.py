@@ -1,6 +1,6 @@
 import pytest
 
-from prcp.exceptions import DuplicateServiceError
+from prcp.exceptions import DuplicateEnvironmentError, DuplicateServiceError
 from prcp.models import create_environment, create_service
 from prcp.repository import (
     EnvironmentRepository,
@@ -66,17 +66,6 @@ def test_in_memory_environment_repository_matches_protocol() -> None:
     repository.save(environment=environment)
 
     assert repository.get_by_name("preprod") == environment
-
-
-def test_same_environment_name_overwrites_old_environment() -> None:
-    env_repo = InMemoryEnvironmentRepository()
-    old_env = create_environment(environment_name="pre-prod", region="eu-gb")
-    new_env = create_environment(environment_name="pre-prod", region="us-south")
-    env_repo.save(old_env)
-    env_repo.save(new_env)
-    ret_env = env_repo.get_by_name("pre-prod")
-    assert ret_env is not None
-    assert ret_env.region == "us-south"
 
 
 def test_new_service_starts_with_empty_service() -> None:
@@ -155,3 +144,20 @@ def test_same_service_name_raises_duplicate_error() -> None:
 
     assert returned_service is not None
     assert returned_service.url == "http://api.v1.payment.abc.com"
+
+
+def test_same_environment_name_raises_duplicate_error() -> None:
+    env_repo = InMemoryEnvironmentRepository()
+
+    old_env = create_environment(environment_name="pre-prod", region="eu-gb")
+    new_env = create_environment(environment_name="pre-prod", region="us-south")
+
+    env_repo.save(old_env)
+
+    with pytest.raises(DuplicateEnvironmentError):
+        env_repo.save(new_env)
+
+    returned_env = env_repo.get_by_name("pre-prod")
+
+    assert returned_env is not None
+    assert returned_env.region == "eu-gb"

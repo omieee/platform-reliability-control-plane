@@ -182,7 +182,7 @@ The repository would normalize names before storage.
 
 #### Option A: PRCP-specific exceptions carry HTTP metadata
 
-For example, `DuplicateServiceError` contains `status`, `title`, and `error_type`.
+For example, `DuplicateServiceException` contains `status`, `title`, and `error_type`.
 
 **Advantages**
 
@@ -216,7 +216,7 @@ The API would maintain an explicit mapping from exception type to HTTP response 
 
 #### Option A: Use application exceptions for both
 
-The repository would raise `ServiceNotFoundError` and `DuplicateServiceError`.
+The repository would raise `ServiceNotFoundException` and `DuplicateServiceException`.
 
 **Advantages**
 
@@ -230,7 +230,7 @@ The repository would raise `ServiceNotFoundError` and `DuplicateServiceError`.
 
 #### Option B: Keep the current split
 
-- Duplicate save: repository raises `DuplicateServiceError`.
+- Duplicate save: repository raises `DuplicateServiceException`.
 - Missing lookup: repository returns `None`, and the API raises HTTP `404`.
 
 **Advantages**
@@ -331,7 +331,7 @@ The API must not be the final authority for uniqueness.
 
 ### 3.4 PRCP-specific exceptions may carry HTTP metadata during Phase 1
 
-`DuplicateServiceError` may continue to contain:
+`DuplicateServiceException` may continue to contain:
 
 - `status`
 - `title`
@@ -366,7 +366,7 @@ For duplicate creation:
 
 ```text
 repository.save
-→ DuplicateServiceError
+→ DuplicateServiceException
 → prcp_error_handler
 → 409
 ```
@@ -454,7 +454,7 @@ The current whitespace-only-name behaviour already demonstrates this risk.
 
 ### 5.2 Domain/application errors are coupled to HTTP
 
-`DuplicateServiceError` contains HTTP metadata even though it is outside the API package.
+`DuplicateServiceException` contains HTTP metadata even though it is outside the API package.
 
 **Consequence**
 
@@ -466,7 +466,7 @@ Accept the coupling during Phase 1. Introduce a transport-neutral error model an
 
 ### 5.3 Missing and duplicate services use different internal mechanisms
 
-A missing lookup returns `None`; a duplicate save raises `DuplicateServiceError`.
+A missing lookup returns `None`; a duplicate save raises `DuplicateServiceException`.
 
 **Consequence**
 
@@ -516,7 +516,7 @@ The save flow will become:
 Attempt INSERT
 → PostgreSQL enforces uniqueness atomically
 → duplicate insert raises a database uniqueness violation
-→ PostgresServiceRepository translates it into DuplicateServiceError
+→ PostgresServiceRepository translates it into DuplicateServiceException
 → prcp_error_handler returns the existing 409 contract
 ```
 

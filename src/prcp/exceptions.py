@@ -16,3 +16,13 @@ class DuplicateServiceError(PRCPError):
     def __init__(self, service_name: str) -> None:
         self.service_name = service_name
         super().__init__(f"Service '{service_name}' already exists")
+
+
+class DuplicateEnvironmentError(PRCPError):
+    status = 409
+    title = "Environment already exists"
+    error_type = "urn:prcp:error:environment-conflict"
+
+    def __init__(self, environment_name: str) -> None:
+        self.environment_name = environment_name
+        super().__init__(f"Environment '{environment_name}' already exists")

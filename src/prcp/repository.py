@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from prcp.exceptions import DuplicateServiceError
+from prcp.exceptions import DuplicateEnvironmentError, DuplicateServiceError
 from prcp.models import Environment, Service
 
 
@@ -15,6 +15,8 @@ class InMemoryEnvironmentRepository:
         self._environments: dict[str, Environment] = {}
 
     def save(self, environment: Environment) -> None:
+        if environment.name in self._environments:
+            raise DuplicateEnvironmentError(environment_name=environment.name)
         self._environments[environment.name] = environment
 
     def get_by_name(self, environment_name: str) -> Environment | None:
