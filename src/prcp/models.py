@@ -58,7 +58,7 @@ def create_environment(
     normalized_env_name = environment_name.strip().lower()
     if not normalized_env_name:
         raise ValueError("environment name is required")
-    env = Environment(name=environment_name, region=region, cluster=cluster)
+    env = Environment(name=normalized_env_name, region=region, cluster=cluster)
     return env
 
 
