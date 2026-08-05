@@ -29,6 +29,11 @@ def test_create_environment_returns_environment() -> None:
     assert environment.cluster == "cluster-1"
 
 
+def test_create_environment_rejects_whitespace_only_name() -> None:
+    with pytest.raises(ValueError, match="environment name is required"):
+        create_environment(environment_name="   ")
+
+
 def test_create_environment_rejects_empty_name() -> None:
     with pytest.raises(ValueError, match="environment name is required"):
         create_environment(environment_name="")
@@ -61,6 +66,11 @@ def test_create_service_rejects_invalid_url() -> None:
             service_name="payment-api",
             service_url="payment.example.com",
         )
+
+
+def test_create_service_rejects_whitespace_only_name() -> None:
+    with pytest.raises(ValueError, match="service name is required"):
+        create_service("   ", "https://example.com")
 
 
 def test_create_http_probe_returns_probe_with_defaults() -> None:

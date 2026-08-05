@@ -28,7 +28,7 @@ def test_list_environments_returns_created_environments(client: TestClient) -> N
     ]
 
 
-def test_get_service_by_name_is_success(client: TestClient) -> None:
+def test_get_environment_by_name_is_success(client: TestClient) -> None:
     client.post(
         url="/environments",
         json={"name": "dev-us-south", "region": "us-south", "cluster": "dev-cluster"},
@@ -42,7 +42,7 @@ def test_get_service_by_name_is_success(client: TestClient) -> None:
     }
 
 
-def test_get_service_by_name_raise_404_if_not_found(client: TestClient) -> None:
+def test_get_environment_by_name_raise_404_if_not_found(client: TestClient) -> None:
     response = client.get("/environments/missing-environment")
 
     assert response.status_code == 404
@@ -52,4 +52,21 @@ def test_get_service_by_name_raise_404_if_not_found(client: TestClient) -> None:
         "status": 404,
         "title": "Not Found",
         "type": "urn:prcp:error:http-404",
+    }
+
+
+def test_duplicate_environment_returns_409(client: TestClient) -> None:
+    payload = {"name": "dev-us-south", "region": "us-south", "cluster": "dev-cluster"}
+
+    first_response = client.post("/environments", json=payload)
+    second_response = client.post("/environments", json=payload)
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {
+        "detail": "Environment 'dev-us-south' already exists",
+        "instance": "/environments",
+        "status": 409,
+        "title": "Environment already exists",
+        "type": "urn:prcp:error:environment-conflict",
     }

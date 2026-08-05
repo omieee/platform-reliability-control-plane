@@ -55,6 +55,9 @@ def create_environment(
 ) -> Environment:
     if not environment_name:
         raise ValueError("environment name is required")
+    normalized_env_name = environment_name.strip().lower()
+    if not normalized_env_name:
+        raise ValueError("environment name is required")
     env = Environment(name=environment_name, region=region, cluster=cluster)
     return env
 
@@ -62,10 +65,13 @@ def create_environment(
 def create_service(service_name: str, service_url: str) -> Service:
     if not service_name:
         raise ValueError("service name is required")
+    normalized_service_name = service_name.strip().lower()
+    if not normalized_service_name:
+        raise ValueError("service name is required")
     parsed_url = urlsplit(service_url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
         raise ValueError("service URL must be a valid HTTP or HTTPS URL")
-    serv = Service(name=service_name.strip().lower(), url=service_url)
+    serv = Service(name=normalized_service_name, url=service_url)
     return serv
 
 
