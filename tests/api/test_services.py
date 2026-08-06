@@ -129,3 +129,51 @@ def test_duplicate_service_does_not_overwrite_original(client: TestClient) -> No
 
     assert duplicate_response.status_code == 409
     assert stored_response.json()["url"] == "https://version-one.example.com/"
+
+
+def test_duplicate_probe_returns_409_with_existing_probe_id(
+    client: TestClient,
+) -> None:
+    service_response = client.post(
+        "/services",
+        json={
+            "name": "payment-api",
+            "url": "https://payment.example.com",
+        },
+    )
+    assert service_response.status_code == 201
+
+    environment_response = client.post(
+        "/environments",
+        json={
+            "name": "preprod",
+            "region": "us-south",
+            "cluster": "preprod-cluster",
+        },
+    )
+    assert environment_response.status_code == 201
+
+    payload = {
+        "service_name": "payment-api",
+        "environment_name": "preprod",
+        "method": "GET",
+        "path": "/health",
+        "expected_status_code": 200,
+        "timeout_seconds": 2.0,
+    }
+
+    first_response = client.post("/probes", json=payload)
+    second_response = client.post("/probes", json=payload)
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+
+    existing_probe_id = first_response.json()["id"]
+
+    assert second_response.json() == {
+        "type": "urn:prcp:error:probe-conflict",
+        "title": "Probe already exists",
+        "status": 409,
+        "detail": f"Probe already exists with ID '{existing_probe_id}'",
+        "instance": "/probes",
+    }
