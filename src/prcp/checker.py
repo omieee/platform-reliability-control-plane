@@ -1,5 +1,6 @@
-import time
 from collections.abc import Callable
+from time import perf_counter
+from urllib.parse import urljoin
 
 import httpx
 
@@ -11,18 +12,31 @@ from prcp.models import (
     create_probe_result,
 )
 
-HttpGet = Callable[..., httpx.Response]
+HttpGet = Callable[[str, float], httpx.Response]
+
+
+def default_http_get(url: str, timeout: float) -> httpx.Response:
+    return httpx.get(url, timeout=timeout)
 
 
 def http_check(
     probe: Probe,
-    http_get: HttpGet = httpx.get,
+    http_get: HttpGet = default_http_get,
 ) -> ProbeResult:
-    start = time.perf_counter()
+    target_url = urljoin(
+        probe.service.url.rstrip("/") + "/",
+        probe.path.lstrip("/"),
+    )
+
+    started_at = perf_counter()
 
     try:
-        response = http_get(probe.url, timeout=probe.timeout_seconds)
-        latency_ms = (time.perf_counter() - start) * 1000
+        response = http_get(
+            target_url,
+            probe.timeout_seconds,
+        )
+
+        latency_ms = (perf_counter() - started_at) * 1000
 
         if response.status_code == probe.expected_status_code:
             return create_probe_result(
@@ -42,7 +56,7 @@ def http_check(
         )
 
     except httpx.TimeoutException:
-        latency_ms = (time.perf_counter() - start) * 1000
+        latency_ms = (perf_counter() - started_at) * 1000
 
         return create_probe_result(
             probe=probe,
@@ -53,7 +67,7 @@ def http_check(
         )
 
     except httpx.RequestError:
-        latency_ms = (time.perf_counter() - start) * 1000
+        latency_ms = (perf_counter() - started_at) * 1000
 
         return create_probe_result(
             probe=probe,

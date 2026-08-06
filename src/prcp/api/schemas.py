@@ -1,4 +1,9 @@
+from http import HTTPMethod, HTTPStatus
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+
+from prcp.helpers import normalize_name
 
 
 class HealthOut(BaseModel):
@@ -49,3 +54,32 @@ class EnvironmentOut(BaseModel):
     name: str
     region: str
     cluster: str
+
+
+class ProbeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    service_name: str
+    environment_name: str
+    method: HTTPMethod = HTTPMethod.GET
+    path: str
+    expected_status_code: HTTPStatus = HTTPStatus.OK
+    timeout_seconds: float = Field(default=2.0, gt=0)
+
+    @field_validator("service_name", "environment_name")
+    @classmethod
+    def normalize_reference_names(cls, value: str) -> str:
+        normalized_name = normalize_name(value)
+        if not normalized_name:
+            raise ValueError("name cannot be empty")
+        return normalized_name
+
+
+class ProbeOut(BaseModel):
+    id: UUID
+    service_name: str
+    environment_name: str
+    method: HTTPMethod
+    path: str
+    expected_status_code: int
+    timeout_seconds: float

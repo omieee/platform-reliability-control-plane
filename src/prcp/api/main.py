@@ -2,18 +2,24 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
 
-from prcp.api.dependencies import get_environment_repository, get_service_repository
+from prcp.api.dependencies import (
+    get_environment_repository,
+    get_probe_repository,
+    get_service_repository,
+)
 from prcp.api.errors import register_error_handlers
 from prcp.api.schemas import (
     EnvironmentCreate,
     EnvironmentOut,
     HealthOut,
+    ProbeCreate,
+    ProbeOut,
     ReadyOut,
     ServiceCreate,
     ServiceOut,
 )
-from prcp.models import create_environment, create_service
-from prcp.repository import EnvironmentRepository, ServiceRepository
+from prcp.models import create_environment, create_http_probe, create_service
+from prcp.repository import EnvironmentRepository, ProbeRepository, ServiceRepository
 
 app = FastAPI(title="Platform Reliability Control Plane")
 register_error_handlers(app)
@@ -121,3 +127,62 @@ def get_environment(
             status_code=status.HTTP_404_NOT_FOUND, detail="Environment not found"
         )
     return EnvironmentOut.model_validate(environment)
+
+
+### Probe Related Routes
+@app.post(
+    "/probes",
+    response_model=ProbeOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def register_probe(
+    request: ProbeCreate,
+    service_repository: Annotated[
+        ServiceRepository,
+        Depends(get_service_repository),
+    ],
+    environment_repository: Annotated[
+        EnvironmentRepository,
+        Depends(get_environment_repository),
+    ],
+    probe_repository: Annotated[
+        ProbeRepository,
+        Depends(get_probe_repository),
+    ],
+) -> ProbeOut:
+    service = service_repository.get_by_name(request.service_name)
+
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service '{request.service_name}' not found",
+        )
+
+    environment = environment_repository.get_by_name(request.environment_name)
+
+    if environment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Environment '{request.environment_name}' not found",
+        )
+
+    probe = create_http_probe(
+        environment=environment,
+        service=service,
+        method=request.method,
+        path=request.path,
+        expected_status_code=request.expected_status_code,
+        timeout_seconds=request.timeout_seconds,
+    )
+
+    probe_repository.save(probe)
+
+    return ProbeOut(
+        id=probe.id,
+        service_name=probe.service.name,
+        environment_name=probe.environment.name,
+        method=probe.method,
+        path=probe.path,
+        expected_status_code=probe.expected_status_code,
+        timeout_seconds=probe.timeout_seconds,
+    )

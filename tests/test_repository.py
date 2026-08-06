@@ -1,10 +1,23 @@
+from http import HTTPMethod
+from uuid import uuid4
+
 import pytest
 
-from prcp.exceptions import DuplicateEnvironmentError, DuplicateServiceError
-from prcp.models import create_environment, create_service
+from prcp.exceptions import (
+    DuplicateEnvironmentError,
+    DuplicateProbeError,
+    DuplicateServiceError,
+)
+from prcp.models import (
+    Probe,
+    create_environment,
+    create_http_probe,
+    create_service,
+)
 from prcp.repository import (
     EnvironmentRepository,
     InMemoryEnvironmentRepository,
+    InMemoryProbeRepository,
     InMemoryServiceRepository,
     ServiceRepository,
 )
@@ -161,3 +174,79 @@ def test_same_environment_name_raises_duplicate_error() -> None:
 
     assert returned_env is not None
     assert returned_env.region == "eu-gb"
+
+
+def create_test_probe(
+    *,
+    path: str = "/health",
+    method: HTTPMethod = HTTPMethod.GET,
+) -> Probe:
+    environment = create_environment(
+        environment_name="preprod",
+        region="us-south",
+    )
+    service = create_service(
+        service_name="payment-api",
+        service_url="https://payment.example.com",
+    )
+
+    return create_http_probe(
+        environment=environment,
+        service=service,
+        method=method,
+        path=path,
+    )
+
+
+def test_probe_repository_saves_and_gets_probe_by_id() -> None:
+    repository = InMemoryProbeRepository()
+    probe = create_test_probe()
+
+    repository.save(probe)
+
+    assert repository.get_by_id(probe.id) == probe
+
+
+def test_probe_repository_returns_none_for_unknown_id() -> None:
+    repository = InMemoryProbeRepository()
+
+    assert repository.get_by_id(uuid4()) is None
+
+
+def test_probe_repository_lists_all_saved_probes() -> None:
+    repository = InMemoryProbeRepository()
+    health_probe = create_test_probe(path="/health")
+    ready_probe = create_test_probe(path="/ready")
+
+    repository.save(health_probe)
+    repository.save(ready_probe)
+
+    assert repository.list_all() == [
+        health_probe,
+        ready_probe,
+    ]
+
+
+def test_probe_repository_rejects_duplicate_composite_key() -> None:
+    repository = InMemoryProbeRepository()
+
+    first_probe = create_test_probe(
+        method=HTTPMethod.GET,
+        path="/health",
+    )
+    duplicate_probe = create_test_probe(
+        method=HTTPMethod.GET,
+        path="/health",
+    )
+
+    assert first_probe.id != duplicate_probe.id
+
+    repository.save(first_probe)
+
+    with pytest.raises(DuplicateProbeError) as exc_info:
+        repository.save(duplicate_probe)
+
+    assert exc_info.value.existing_probe_id == first_probe.id
+    assert repository.get_by_id(first_probe.id) == first_probe
+    assert repository.get_by_id(duplicate_probe.id) is None
+    assert repository.list_all() == [first_probe]
