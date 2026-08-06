@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from http import HTTPStatus
+from http import HTTPMethod, HTTPStatus
+from urllib.parse import urljoin, urlsplit
+from uuid import UUID, uuid4
+
+from prcp.helpers import normalize_name
 
 
 class ProbeStatus(StrEnum):
@@ -33,9 +37,11 @@ class Environment:
 
 @dataclass
 class Probe:
+    id: UUID
     environment: Environment
     service: Service
-    url: str
+    method: HTTPMethod
+    path: str
     expected_status_code: HTTPStatus = HTTPStatus.OK
     timeout_seconds: float = 2.0
 
@@ -54,39 +60,61 @@ def create_environment(
 ) -> Environment:
     if not environment_name:
         raise ValueError("environment name is required")
-    env = Environment(name=environment_name, region=region, cluster=cluster)
+    normalized_env_name = normalize_name(environment_name)
+    if not normalized_env_name:
+        raise ValueError("environment name is required")
+    env = Environment(name=normalized_env_name, region=region, cluster=cluster)
     return env
 
 
 def create_service(service_name: str, service_url: str) -> Service:
     if not service_name:
         raise ValueError("service name is required")
-    if not service_url.startswith(("http://", "https://")):
-        raise ValueError("service url must start with http:// or https://")
-    serv = Service(name=service_name, url=service_url)
+    normalized_service_name = normalize_name(service_name)
+    if not normalized_service_name:
+        raise ValueError("service name is required")
+    parsed_url = urlsplit(service_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        raise ValueError("service URL must be a valid HTTP or HTTPS URL")
+    serv = Service(name=normalized_service_name, url=service_url)
     return serv
 
 
 def create_http_probe(
     environment: Environment | None,
     service: Service | None,
-    url: str,
+    method: HTTPMethod,
+    path: str,
     expected_status_code: HTTPStatus = HTTPStatus.OK,
     timeout_seconds: float = 2.0,
 ) -> Probe:
     if environment is None:
-        raise ValueError("you need to have an environment up and ready")
+        raise ValueError("environment is required")
+
     if service is None:
-        raise ValueError("you need to have a service up and ready")
-    if not url.startswith(("http://", "https://")):
-        raise ValueError("url must start with http:// or https://")
+        raise ValueError("service is required")
+
+    normalized_path = "/" + path.strip().lstrip("/")
+
+    target_url = urljoin(
+        service.url.rstrip("/") + "/",
+        normalized_path.lstrip("/"),
+    )
+
+    parsed_url = urlsplit(target_url)
+
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        raise ValueError("probe URL must be a valid HTTP or HTTPS URL")
+
     if timeout_seconds <= 0:
         raise ValueError("timeout seconds must be greater than zero")
 
     return Probe(
+        id=uuid4(),
         environment=environment,
         service=service,
-        url=url,
+        method=method,
+        path=normalized_path,
         expected_status_code=expected_status_code,
         timeout_seconds=timeout_seconds,
     )
