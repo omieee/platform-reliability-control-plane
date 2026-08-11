@@ -1,4 +1,4 @@
-# Month 02 - API and Data Model
+# Month 02 — API and Data Model
 
 ## Purpose
 
@@ -12,9 +12,9 @@ The gate decision is derived from one or more `ProbeResult` values.
 
 ## Operational Contract
 
-When PRCP cannot determine a service's health, it **stops the promotion by default**.
+When PRCP cannot determine a service's health with enough confidence, it **does not automatically promote the release**.
 
-The cost is that a potentially healthy release may be delayed and require manual investigation, but PRCP avoids promoting a release when it does not have enough evidence to determine that the service is healthy.
+The cost is that a potentially healthy release may be delayed and require manual investigation, but PRCP avoids automatically promoting a release when health evidence is incomplete or unavailable.
 
 ---
 
@@ -133,7 +133,7 @@ The available probe evidence indicates that the rollout is healthy enough to pro
 
 The available evidence contains successful probe results, but some results are still unknown.
 
-The rollout may proceed with caution and should surface the uncertainty for manual review or alerting.
+`WARN` does **not** mean automatic promotion. It means the available evidence is partially positive but incomplete, so the rollout requires explicit human review before it can proceed.
 
 ### BLOCK
 
@@ -149,6 +149,20 @@ By default, `UNKNOWN` does **not** permit promotion.
 
 ---
 
+## Gate Input Completeness
+
+`decide(results)` remains a pure function and receives only `ProbeResult` values. It does not query the probe repository and does not know how many probes are registered.
+
+The caller is responsible for determining which probes were expected to report before calling `decide()`.
+
+If a registered probe has no result, the caller represents that missing evidence as an `UNKNOWN` probe result before building the list passed to `decide()`.
+
+At the gate-decision boundary, a probe that could not be observed and a probe that produced no result are therefore treated the same way: both contribute `UNKNOWN` evidence. This is intentional because neither provides enough evidence to declare that probe healthy or failed.
+
+The underlying reason should still be preserved where possible so later alerting and runbooks can distinguish, for example, a timeout from a missing execution.
+
+---
+
 ## Gate Decision Table
 
 | Probe results | GateStatus | Why |
@@ -156,10 +170,10 @@ By default, `UNKNOWN` does **not** permit promotion.
 | Empty | `UNKNOWN` | No probe evidence exists, so PRCP cannot determine health. |
 | All `PASS` | `PASS` | Every available probe result confirms the expected health condition. |
 | `PASS` + one `FAIL` | `BLOCK` | At least one confirmed probe failure is enough to block promotion. |
-| `PASS` + one `UNKNOWN` | `WARN` | Some health evidence is positive, but the overall result is not fully known. |
+| `PASS` + one `UNKNOWN` | `WARN` | Some health evidence is positive, but the overall result is incomplete and requires human review. |
 | All `UNKNOWN` | `UNKNOWN` | No probe established either confirmed health or confirmed failure. |
 | Multiple `FAIL` | `BLOCK` | Confirmed probe failures exist, so promotion must be blocked. |
-| Three probes registered but only one result returned | `UNKNOWN` | Probe coverage is incomplete, so PRCP does not have enough evidence to determine overall health. |
+| Three probes registered but only one `PASS` result returned | `WARN` | Before `decide()` is called, the two missing probe results are represented as `UNKNOWN`; the function therefore evaluates one `PASS` plus two `UNKNOWN` results. |
 
 ---
 
@@ -171,8 +185,8 @@ Promotion behaviour is derived from that decision:
 
 | GateStatus | Promotion behaviour |
 |---|---|
-| `PASS` | Allow promotion |
-| `WARN` | Allow promotion with caution/manual review |
+| `PASS` | Allow automatic promotion |
+| `WARN` | Do not auto-promote; require explicit human review/approval |
 | `BLOCK` | Stop promotion |
 | `UNKNOWN` | Stop promotion by default |
 
@@ -181,4 +195,4 @@ This separation is intentional:
 - `UNKNOWN` means PRCP lacks enough evidence.
 - `BLOCK` means PRCP has explicit evidence of failure.
 
-Both stop promotion, but for different reasons.
+`BLOCK` and `UNKNOWN` stop promotion automatically for different reasons. `WARN` pauses automatic promotion and hands the decision to a human because the evidence is partially positive but incomplete.
