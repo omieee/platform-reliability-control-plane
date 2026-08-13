@@ -196,3 +196,12 @@ This separation is intentional:
 - `BLOCK` means PRCP has explicit evidence of failure.
 
 `BLOCK` and `UNKNOWN` stop promotion automatically for different reasons. `WARN` pauses automatic promotion and hands the decision to a human because the evidence is partially positive but incomplete.
+
+## Deffered Decisions:
+
+- **Gate evaluation scope / caller:** Deferred until PRCP defines which probe results constitute one gate evaluation and how expected probes with missing results are normalized before calling `decide(results)`.
+
+- **GateDecision output contract:** Evidence attached to a gate decision is deferred until a real consumer exists. The consumer will determine the minimum useful evidence shape, rather than defining it prematurely.
+
+## Log
+- **Synchronous probe execution:** `POST /probes/{probe_id}/run` currently performs the HTTP check inside the request handler. This is acceptable for the current scope but will require reconsideration when probe execution becomes slow, concurrent, scheduled, or asynchronous.
