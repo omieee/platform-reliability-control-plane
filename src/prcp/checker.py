@@ -60,7 +60,7 @@ def http_check(
 
         return create_probe_result(
             probe=probe,
-            status=ProbeStatus.FAIL,
+            status=ProbeStatus.UNKNOWN,
             actual_status_code=None,
             failure_reason=FailureReason.TIMEOUT,
             latency_ms=latency_ms,

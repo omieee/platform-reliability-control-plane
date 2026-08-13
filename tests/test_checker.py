@@ -100,7 +100,7 @@ def test_http_check_returns_fail_on_timeout() -> None:
     result = http_check(probe, http_get=fake_http_get)
 
     assert result.probe == probe
-    assert result.status == ProbeStatus.FAIL
+    assert result.status == ProbeStatus.UNKNOWN
     assert result.actual_status_code is None
     assert result.failure_reason == FailureReason.TIMEOUT
     assert result.latency_ms is not None

@@ -9,15 +9,20 @@ from prcp.exceptions import (
     DuplicateServiceError,
 )
 from prcp.models import (
+    FailureReason,
     Probe,
+    ProbeResult,
+    ProbeStatus,
     create_environment,
     create_http_probe,
+    create_probe_result,
     create_service,
 )
 from prcp.repository import (
     EnvironmentRepository,
     InMemoryEnvironmentRepository,
     InMemoryProbeRepository,
+    InMemoryProbeResultRepository,
     InMemoryServiceRepository,
     ServiceRepository,
 )
@@ -250,3 +255,115 @@ def test_probe_repository_rejects_duplicate_composite_key() -> None:
     assert repository.get_by_id(first_probe.id) == first_probe
     assert repository.get_by_id(duplicate_probe.id) is None
     assert repository.list_all() == [first_probe]
+
+
+def make_result(status: ProbeStatus) -> ProbeResult:
+    service = create_service("payments", "https://example.com")
+    environment = create_environment("prod")
+
+    probe = create_http_probe(
+        environment=environment,
+        service=service,
+        method=HTTPMethod.GET,
+        path="/health",
+    )
+
+    if status == ProbeStatus.PASS:
+        return create_probe_result(
+            probe=probe,
+            status=ProbeStatus.PASS,
+            actual_status_code=200,
+            failure_reason=None,
+            latency_ms=10.0,
+        )
+
+    if status == ProbeStatus.FAIL:
+        return create_probe_result(
+            probe=probe,
+            status=ProbeStatus.FAIL,
+            actual_status_code=500,
+            failure_reason=FailureReason.HTTP_ERROR,
+            latency_ms=10.0,
+        )
+
+    return create_probe_result(
+        probe=probe,
+        status=ProbeStatus.UNKNOWN,
+        actual_status_code=None,
+        failure_reason=FailureReason.TIMEOUT,
+        latency_ms=None,
+    )
+
+
+def test_add_and_list_result() -> None:
+    repository = InMemoryProbeResultRepository()
+    result = make_result(ProbeStatus.PASS)
+
+    repository.add(result)
+
+    stored_results = repository.list_for_probe(result.probe.id)
+
+    assert stored_results == [result]
+
+
+def test_multiple_results_are_appended_for_same_probe() -> None:
+    repository = InMemoryProbeResultRepository()
+
+    first_result = make_result(ProbeStatus.PASS)
+
+    second_result = create_probe_result(
+        probe=first_result.probe,
+        status=ProbeStatus.FAIL,
+        actual_status_code=500,
+        failure_reason=FailureReason.HTTP_ERROR,
+        latency_ms=20.0,
+    )
+
+    repository.add(first_result)
+    repository.add(second_result)
+
+    stored_results = repository.list_for_probe(first_result.probe.id)
+
+    assert stored_results == [first_result, second_result]
+
+
+def test_results_keep_insertion_order() -> None:
+    repository = InMemoryProbeResultRepository()
+
+    first_result = make_result(ProbeStatus.PASS)
+
+    second_result = create_probe_result(
+        probe=first_result.probe,
+        status=ProbeStatus.UNKNOWN,
+        actual_status_code=None,
+        failure_reason=FailureReason.TIMEOUT,
+        latency_ms=None,
+    )
+
+    third_result = create_probe_result(
+        probe=first_result.probe,
+        status=ProbeStatus.FAIL,
+        actual_status_code=500,
+        failure_reason=FailureReason.HTTP_ERROR,
+        latency_ms=30.0,
+    )
+
+    repository.add(first_result)
+    repository.add(second_result)
+    repository.add(third_result)
+
+    stored_results = repository.list_for_probe(first_result.probe.id)
+
+    assert stored_results == [
+        first_result,
+        second_result,
+        third_result,
+    ]
+
+
+def test_unknown_probe_returns_empty_list() -> None:
+    repository = InMemoryProbeResultRepository()
+
+    stored_results = repository.list_for_probe(uuid4())
+
+    assert stored_results == []
