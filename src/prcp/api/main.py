@@ -197,7 +197,7 @@ def register_probe(
     )
 
 
-### Probe relult related routes
+### Probe result related routes
 @app.post(
     "/probes/{probe_id}/run",
     response_model=ProbeResultOut,

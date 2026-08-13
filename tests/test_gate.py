@@ -54,24 +54,58 @@ def make_result(status: ProbeStatus) -> ProbeResult:
 @pytest.mark.parametrize(
     ("input_value", "expected"),
     [
-        ([], GateStatus.UNKNOWN),
-        ([make_result(ProbeStatus.PASS)], GateStatus.PASS),
-        (
+        pytest.param(
+            [],
+            GateStatus.UNKNOWN,
+            id="empty_results_produce_unknown",
+        ),
+        pytest.param(
+            [make_result(ProbeStatus.PASS)],
+            GateStatus.PASS,
+            id="single_pass_produces_pass",
+        ),
+        pytest.param(
+            [
+                make_result(ProbeStatus.PASS),
+                make_result(ProbeStatus.PASS),
+            ],
+            GateStatus.PASS,
+            id="multiple_pass_produces_pass",
+        ),
+        pytest.param(
             [
                 make_result(ProbeStatus.PASS),
                 make_result(ProbeStatus.FAIL),
             ],
             GateStatus.BLOCK,
+            id="pass_and_fail_produce_block",
         ),
-        (
+        pytest.param(
             [
                 make_result(ProbeStatus.PASS),
                 make_result(ProbeStatus.UNKNOWN),
             ],
             GateStatus.WARN,
+            id="pass_and_unknown_produce_warn",
         ),
-        ([make_result(ProbeStatus.UNKNOWN)], GateStatus.UNKNOWN),
-        ([make_result(ProbeStatus.FAIL)], GateStatus.BLOCK),
+        pytest.param(
+            [make_result(ProbeStatus.UNKNOWN)],
+            GateStatus.UNKNOWN,
+            id="all_unknown_produces_unknown",
+        ),
+        pytest.param(
+            [make_result(ProbeStatus.FAIL)],
+            GateStatus.BLOCK,
+            id="single_fail_produces_block",
+        ),
+        pytest.param(
+            [
+                make_result(ProbeStatus.FAIL),
+                make_result(ProbeStatus.FAIL),
+            ],
+            GateStatus.BLOCK,
+            id="multiple_fail_produces_block",
+        ),
     ],
 )
 def test_gate(
