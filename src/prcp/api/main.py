@@ -1,10 +1,12 @@
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, status
 
 from prcp.api.dependencies import (
     get_environment_repository,
     get_probe_repository,
+    get_probe_result_repository,
     get_service_repository,
 )
 from prcp.api.errors import register_error_handlers
@@ -14,12 +16,19 @@ from prcp.api.schemas import (
     HealthOut,
     ProbeCreate,
     ProbeOut,
+    ProbeResultOut,
     ReadyOut,
     ServiceCreate,
     ServiceOut,
 )
+from prcp.checker import http_check
 from prcp.models import create_environment, create_http_probe, create_service
-from prcp.repository import EnvironmentRepository, ProbeRepository, ServiceRepository
+from prcp.repository import (
+    EnvironmentRepository,
+    ProbeRepository,
+    ProbeResultRepository,
+    ServiceRepository,
+)
 
 app = FastAPI(title="Platform Reliability Control Plane")
 register_error_handlers(app)
@@ -186,3 +195,78 @@ def register_probe(
         expected_status_code=probe.expected_status_code,
         timeout_seconds=probe.timeout_seconds,
     )
+
+
+### Probe relult related routes
+@app.post(
+    "/probes/{probe_id}/run",
+    response_model=ProbeResultOut,
+    status_code=status.HTTP_200_OK,
+)
+def run_probe(
+    probe_id: UUID,
+    probe_repository: Annotated[
+        ProbeRepository,
+        Depends(get_probe_repository),
+    ],
+    result_repository: Annotated[
+        ProbeResultRepository,
+        Depends(get_probe_result_repository),
+    ],
+) -> ProbeResultOut:
+    probe = probe_repository.get_by_id(probe_id)
+
+    if probe is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Probe '{probe_id}' not found",
+        )
+
+    result = http_check(probe)
+
+    result_repository.add(result)
+
+    return ProbeResultOut(
+        probe_id=result.probe.id,
+        status=result.status,
+        actual_status_code=result.actual_status_code,
+        failure_reason=result.failure_reason,
+        latency_ms=result.latency_ms,
+    )
+
+
+@app.get(
+    "/probes/{probe_id}/results",
+    response_model=list[ProbeResultOut],
+)
+def get_probe_results(
+    probe_id: UUID,
+    probe_repository: Annotated[
+        ProbeRepository,
+        Depends(get_probe_repository),
+    ],
+    result_repository: Annotated[
+        ProbeResultRepository,
+        Depends(get_probe_result_repository),
+    ],
+) -> list[ProbeResultOut]:
+    probe = probe_repository.get_by_id(probe_id)
+
+    if probe is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Probe '{probe_id}' not found",
+        )
+
+    results = result_repository.list_for_probe(probe_id)
+
+    return [
+        ProbeResultOut(
+            probe_id=result.probe.id,
+            status=result.status,
+            actual_status_code=result.actual_status_code,
+            failure_reason=result.failure_reason,
+            latency_ms=result.latency_ms,
+        )
+        for result in results
+    ]

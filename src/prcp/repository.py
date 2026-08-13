@@ -1,3 +1,4 @@
+from collections import defaultdict
 from http import HTTPMethod
 from typing import Protocol
 from uuid import UUID
@@ -7,7 +8,7 @@ from prcp.exceptions import (
     DuplicateProbeError,
     DuplicateServiceError,
 )
-from prcp.models import Environment, Probe, Service
+from prcp.models import Environment, Probe, ProbeResult, Service
 
 
 class EnvironmentRepository(Protocol):
@@ -89,3 +90,19 @@ class InMemoryProbeRepository:
 
     def list_all(self) -> list[Probe]:
         return list(self._probes_by_id.values())
+
+
+class ProbeResultRepository(Protocol):
+    def add(self, result: ProbeResult) -> None: ...
+    def list_for_probe(self, probe_id: UUID) -> list[ProbeResult]: ...
+
+
+class InMemoryProbeResultRepository:
+    def __init__(self) -> None:
+        self._results: dict[UUID, list[ProbeResult]] = defaultdict(list)
+
+    def add(self, result: ProbeResult) -> None:
+        self._results[result.probe.id].append(result)
+
+    def list_for_probe(self, probe_id: UUID) -> list[ProbeResult]:
+        return list(self._results.get(probe_id, []))

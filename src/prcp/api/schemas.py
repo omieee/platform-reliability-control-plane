@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from prcp.helpers import normalize_name
+from prcp.models import FailureReason, ProbeStatus
 
 
 class HealthOut(BaseModel):
@@ -83,3 +84,11 @@ class ProbeOut(BaseModel):
     path: str
     expected_status_code: int
     timeout_seconds: float
+
+
+class ProbeResultOut(BaseModel):
+    probe_id: UUID
+    status: ProbeStatus
+    actual_status_code: int | None
+    failure_reason: FailureReason | None
+    latency_ms: float | None
