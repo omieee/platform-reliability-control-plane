@@ -197,7 +197,7 @@ This separation is intentional:
 
 `BLOCK` and `UNKNOWN` stop promotion automatically for different reasons. `WARN` pauses automatic promotion and hands the decision to a human because the evidence is partially positive but incomplete.
 
-## Deffered Decisions:
+## Deferred Decisions:
 
 - **Gate evaluation scope / caller:** Deferred until PRCP defines which probe results constitute one gate evaluation and how expected probes with missing results are normalized before calling `decide(results)`.
 
