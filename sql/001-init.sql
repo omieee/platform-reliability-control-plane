@@ -55,7 +55,7 @@ CREATE TABLE probe
     method               http_method_type NOT NULL,
     path                 TEXT             NOT NULL,
     expected_status_code SMALLINT         NOT NULL CHECK (expected_status_code BETWEEN 100 AND 599),
-    timeout_seconds      DECIMAL DEFAULT 2.0 CHECK (timeout_seconds > 0),
+    timeout_seconds      DECIMAL          NOT NULL DEFAULT 2.0 CHECK (timeout_seconds > 0),
 
     CONSTRAINT fk_probe_environment
         FOREIGN KEY (probe_env)
@@ -92,16 +92,11 @@ CREATE TABLE probe_result
 
 CREATE TABLE gate_decision
 (
-    id              uuid PRIMARY KEY,
-    status          gate_status,
-    decided_at      timestamptz NOT NULL DEFAULT now(),
-    probe_result_id UUID,
-    service_id      BIGINT,
-    env_id          BIGINT,
-    CONSTRAINT fk_gate_probe_result
-        FOREIGN KEY (probe_result_id)
-            REFERENCES probe (id)
-            ON DELETE RESTRICT,
+    id         uuid PRIMARY KEY,
+    status     gate_status NOT NULL,
+    decided_at timestamptz NOT NULL DEFAULT now(),
+    service_id BIGINT      NOT NULL,
+    env_id     BIGINT      NOT NULL,
 
     CONSTRAINT fk_gate_service
         FOREIGN KEY (service_id)
