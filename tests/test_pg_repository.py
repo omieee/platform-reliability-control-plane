@@ -56,4 +56,5 @@ def test_list_all_returns_correct_count(pg_conn) -> None:
     repo.save(service2)
 
     row = repo.list_all()
-    assert service1 and service2 in row
+    assert service1 in row
+    assert service2 in row
