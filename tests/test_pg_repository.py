@@ -42,7 +42,7 @@ def test_get_by_name_is_not_valid(pg_conn) -> None:
     assert row is None
 
 
-def test_list_all_returns_correct_count(pg_conn) -> None:
+def test_list_all_includes_saved_services(pg_conn) -> None:
     s1name = f"test-{uuid4().hex}"
     service1 = create_service(s1name, "https://example.com")
 
