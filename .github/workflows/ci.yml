@@ -16,6 +16,25 @@ jobs:
     name: quality gate
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: prcp_ci
+          POSTGRES_PASSWORD: ci_test_only
+          POSTGRES_DB: prcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prcp_ci -d prcp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PRCP_TEST_DSN: "host=localhost port=5432 dbname=prcp_test user=prcp_ci password=ci_test_only"
+      PGPASSWORD: ci_test_only
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,6 +51,19 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked --group dev
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Initialize PostgreSQL schema
+        run: |
+          psql -v ON_ERROR_STOP=1 \
+            -h localhost \
+            -U prcp_ci \
+            -d prcp_test \
+            -f sql/001-init.sql
 
       - name: Check formatting
         run: uv run ruff format --check .
