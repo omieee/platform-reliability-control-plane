@@ -60,8 +60,8 @@ def test_list_all_returns_correct_count(pg_conn) -> None:
     assert 2 == len(row)
 
 
-def test_list_all_returns_nothing_if_no_data(pg_conn) -> None:
+def test_list_all_returns_empty_if_no_data(pg_conn) -> None:
     repo = PgServiceRepository(pg_conn)
     row = repo.list_all()
 
-    assert row is None
+    assert row == []
