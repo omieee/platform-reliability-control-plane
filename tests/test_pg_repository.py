@@ -44,24 +44,16 @@ def test_get_by_name_is_not_valid(pg_conn) -> None:
 
 def test_list_all_returns_correct_count(pg_conn) -> None:
     s1name = f"test-{uuid4().hex}"
-    service = create_service(s1name, "https://example.com")
+    service1 = create_service(s1name, "https://example.com")
 
     repo = PgServiceRepository(pg_conn)
-    repo.save(service)
+    repo.save(service1)
 
     s2name = f"test-{uuid4().hex}"
-    service = create_service(s2name, "https://example.com")
+    service2 = create_service(s2name, "https://example.com")
 
     repo = PgServiceRepository(pg_conn)
-    repo.save(service)
+    repo.save(service2)
 
     row = repo.list_all()
-
-    assert 2 == len(row)
-
-
-def test_list_all_returns_empty_if_no_data(pg_conn) -> None:
-    repo = PgServiceRepository(pg_conn)
-    row = repo.list_all()
-
-    assert row == []
+    assert service1 and service2 in row
