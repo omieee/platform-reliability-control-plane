@@ -1,5 +1,8 @@
 import psycopg
 
+from prcp.exceptions import (
+    DuplicateServiceError,
+)
 from prcp.models import Service
 
 
@@ -8,12 +11,15 @@ class PgServiceRepository:
         self.conn = conn
 
     def save(self, service: Service) -> None:
-        sql = "INSERT INTO service (name, url) values (%s, %s)"
-        data = (
-            service.name,
-            service.url,
-        )
-        self.conn.execute(query=sql, params=data)
+        if self.get_by_name(service_name=service.name):
+            raise DuplicateServiceError(service_name=service.name)
+        else:
+            sql = "INSERT INTO service (name, url) values (%s, %s)"
+            data = (
+                service.name,
+                service.url,
+            )
+            self.conn.execute(query=sql, params=data)
 
     def get_by_name(self, service_name: str) -> Service | None:
         sql = "SELECT name, url FROM service WHERE name = %s"
