@@ -11,15 +11,15 @@ class PgServiceRepository:
         self.conn = conn
 
     def save(self, service: Service) -> None:
-        if self.get_by_name(service_name=service.name):
-            raise DuplicateServiceError(service_name=service.name)
-        else:
-            sql = "INSERT INTO service (name, url) values (%s, %s)"
-            data = (
-                service.name,
-                service.url,
-            )
+        sql = "INSERT INTO service (name, url) values (%s, %s)"
+        data = (
+            service.name,
+            service.url,
+        )
+        try:
             self.conn.execute(query=sql, params=data)
+        except psycopg.errors.UniqueViolation as e:
+            raise DuplicateServiceError(service_name=service.name) from e
 
     def get_by_name(self, service_name: str) -> Service | None:
         sql = "SELECT name, url FROM service WHERE name = %s"
