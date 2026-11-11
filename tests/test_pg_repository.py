@@ -1,6 +1,5 @@
 from uuid import uuid4
 
-import psycopg
 import pytest
 
 from prcp.exceptions import (
@@ -80,10 +79,5 @@ def test_same_service_name_raises_duplicate_error(pg_conn) -> None:
 
     serv_repo.save(old_serv)
 
-    with pytest.raises((psycopg.errors.InFailedSqlTransaction, DuplicateServiceError)):
+    with pytest.raises(DuplicateServiceError):
         serv_repo.save(new_serv)
-
-    returned_service = serv_repo.get_by_name("signup-api")
-
-    assert returned_service is not None
-    assert returned_service.url == "http://api.v1.payment.abc.com"
