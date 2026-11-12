@@ -1,3 +1,8 @@
+import os
+
+import psycopg
+
+from prcp.pg_repository import PgServiceRepository
 from prcp.repository import (
     EnvironmentRepository,
     InMemoryEnvironmentRepository,
@@ -6,7 +11,6 @@ from prcp.repository import (
     InMemoryServiceRepository,
     ProbeRepository,
     ProbeResultRepository,
-    ServiceRepository,
 )
 
 _service_repository = InMemoryServiceRepository()
@@ -15,8 +19,9 @@ _probe_repository = InMemoryProbeRepository()
 _probe_result_repository = InMemoryProbeResultRepository()
 
 
-def get_service_repository() -> ServiceRepository:
-    return _service_repository
+def get_service_repository():
+    with psycopg.connect(os.environ["PRCP_DSN"]) as conn:
+        yield PgServiceRepository(conn)
 
 
 def get_environment_repository() -> EnvironmentRepository:
