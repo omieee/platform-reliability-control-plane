@@ -33,6 +33,17 @@ from prcp.repository import (
 app = FastAPI(title="Platform Reliability Control Plane")
 register_error_handlers(app)
 
+"""
+DIs start 
+"""
+ServiceRepoDep = Annotated[
+    ServiceRepository, Depends(get_service_repository, scope="function")
+]
+
+"""
+DIs ends
+"""
+
 
 @app.get("/health", response_model=HealthOut)
 def health() -> HealthOut:
@@ -50,7 +61,7 @@ def ready() -> ReadyOut:
 @app.post("/services", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
 def create_service_endpoint(
     request: ServiceCreate,
-    repository: Annotated[ServiceRepository, Depends(get_service_repository)],
+    repository: ServiceRepoDep,
 ) -> ServiceOut:
     service = create_service(service_name=request.name, service_url=str(request.url))
     repository.save(service=service)
@@ -59,10 +70,7 @@ def create_service_endpoint(
 
 @app.get("/services", response_model=list[ServiceOut], status_code=status.HTTP_200_OK)
 def get_all_services(
-    repository: Annotated[
-        ServiceRepository,
-        Depends(get_service_repository),
-    ],
+    repository: ServiceRepoDep,
 ) -> list[ServiceOut]:
     services = repository.list_all()
     return [ServiceOut.model_validate(service) for service in services]
@@ -75,10 +83,7 @@ def get_all_services(
 )
 def get_service(
     service_name: str,
-    repository: Annotated[
-        ServiceRepository,
-        Depends(get_service_repository),
-    ],
+    repository: ServiceRepoDep,
 ) -> ServiceOut:
     service = repository.get_by_name(service_name=service_name)
     if service is None:
@@ -146,10 +151,7 @@ def get_environment(
 )
 def register_probe(
     request: ProbeCreate,
-    service_repository: Annotated[
-        ServiceRepository,
-        Depends(get_service_repository),
-    ],
+    service_repository: ServiceRepoDep,
     environment_repository: Annotated[
         EnvironmentRepository,
         Depends(get_environment_repository),

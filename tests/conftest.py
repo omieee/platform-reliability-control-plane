@@ -1,5 +1,7 @@
+import os
 from collections.abc import Iterator
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -83,3 +85,14 @@ def client(
     app.dependency_overrides.pop(get_environment_repository, None)
     app.dependency_overrides.pop(get_probe_repository, None)
     app.dependency_overrides.pop(get_probe_result_repository, None)
+
+
+# DB RELATED FIXTURES
+@pytest.fixture
+def pg_conn():
+    conn = psycopg.connect(os.environ["PRCP_TEST_DSN"])
+    try:
+        yield conn
+    finally:
+        conn.rollback()
+        conn.close()
