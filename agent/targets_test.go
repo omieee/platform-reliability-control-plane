@@ -21,4 +21,16 @@ func TestDefaultTargets(t *testing.T) {
 			t.Errorf("Got: %q, wanted %q", got[:], want[:])
 		}
 	})
+
+	t.Run("check if a and b are not equal", func(t *testing.T) {
+		a := DefaultTargets()
+		b := a
+		b = append(b, "https://search.example.com/health")
+		if len(a) != len(b)-1 {
+			t.Errorf("\nLength of a: %d\nLength of b: %d", len(a), len(b))
+		}
+		if slices.Contains(a, "https://search.example.com/health") {
+			t.Errorf("\na contains %q, \nb contains %q", a, b)
+		}
+	})
 }
